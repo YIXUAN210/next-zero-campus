@@ -1,0 +1,18 @@
+# Local Deployment & Automation Scripts (本機專用腳本，不需上傳至 GitHub)
+deploy_*.bat
+deploy_*.ps1
+*.bat
+*.ps1
+
+# Operating System & IDE Files (編輯器與系統暫存)
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Internal Raw Transcripts (原始參訪與對話紀錄草稿，保留本機不公開)
+參訪千葉大學碳盤查經驗分享.md
+
+# Temporary & Log files
+*.log
+scratch/
