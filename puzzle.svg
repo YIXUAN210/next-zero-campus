@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#bbf7d0" />
+      <stop offset="100%" stop-color="#ecfdf5" />
+    </linearGradient>
+    <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="100%" stop-color="#fde047" />
+    </linearGradient>
+    <linearGradient id="hill1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#86efac" />
+      <stop offset="100%" stop-color="#4ade80" />
+    </linearGradient>
+    <linearGradient id="hill2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="800" height="600" fill="url(#sky)" />
+
+  <!-- Sun -->
+  <circle cx="680" cy="120" r="60" fill="url(#sunGrad)" opacity="0.9" />
+
+  <!-- Distant Hills -->
+  <path d="M0 380 Q 200 280, 450 350 T 800 320 L 800 600 L 0 600 Z" fill="url(#hill1)" />
+  <path d="M0 430 Q 300 360, 600 420 T 800 400 L 800 600 L 0 600 Z" fill="url(#hill2)" opacity="0.85" />
+
+  <!-- Wind Turbines -->
+  <g transform="translate(180, 240)">
+    <rect x="-3" y="0" width="6" height="130" fill="#ffffff" rx="3" />
+    <circle cx="0" cy="0" r="7" fill="#e2e8f0" />
+    <path d="M0 0 L-6 -70 L6 -70 Z" fill="#ffffff" />
+    <path d="M0 0 L60 35 L50 45 Z" fill="#ffffff" />
+    <path d="M0 0 L-60 35 L-50 45 Z" fill="#ffffff" />
+  </g>
+
+  <g transform="translate(290, 280) scale(0.7)">
+    <rect x="-3" y="0" width="6" height="130" fill="#ffffff" rx="3" />
+    <circle cx="0" cy="0" r="7" fill="#e2e8f0" />
+    <path d="M0 0 L-6 -70 L6 -70 Z" fill="#ffffff" />
+    <path d="M0 0 L60 35 L50 45 Z" fill="#ffffff" />
+    <path d="M0 0 L-60 35 L-50 45 Z" fill="#ffffff" />
+  </g>
+
+  <!-- Sustainable Campus Building -->
+  <rect x="420" y="320" width="260" height="200" fill="#ffffff" rx="8" />
+  <polygon points="400,320 550,230 700,320" fill="#047857" />
+  
+  <!-- Solar Panels on Roof -->
+  <polygon points="440,300 540,245 540,285 440,310" fill="url(#panel)" stroke="#ffffff" stroke-width="1.5" />
+  <polygon points="560,245 660,300 660,310 560,285" fill="url(#panel)" stroke="#ffffff" stroke-width="1.5" />
+
+  <!-- Windows -->
+  <rect x="450" y="350" width="40" height="45" fill="#38bdf8" rx="4" />
+  <rect x="530" y="350" width="40" height="45" fill="#38bdf8" rx="4" />
+  <rect x="610" y="350" width="40" height="45" fill="#38bdf8" rx="4" />
+  
+  <rect x="450" y="420" width="40" height="45" fill="#38bdf8" rx="4" />
+  <rect x="610" y="420" width="40" height="45" fill="#38bdf8" rx="4" />
+  
+  <!-- Door -->
+  <rect x="525" y="440" width="50" height="80" fill="#065f46" rx="4" />
+  
+  <!-- Trees & Greenery -->
+  <g transform="translate(100, 460)">
+    <rect x="-6" y="30" width="12" height="60" fill="#78350f" rx="3" />
+    <circle cx="0" cy="10" r="45" fill="#15803d" />
+    <circle cx="-15" cy="-5" r="35" fill="#22c55e" />
+    <circle cx="20" cy="5" r="30" fill="#16a34a" />
+  </g>
+
+  <g transform="translate(360, 470) scale(0.85)">
+    <rect x="-6" y="30" width="12" height="60" fill="#78350f" rx="3" />
+    <circle cx="0" cy="10" r="45" fill="#15803d" />
+    <circle cx="-15" cy="-5" r="35" fill="#22c55e" />
+    <circle cx="20" cy="5" r="30" fill="#16a34a" />
+  </g>
+
+  <!-- Foreground Lawn -->
+  <path d="M0 520 Q 400 480, 800 520 L 800 600 L 0 600 Z" fill="#166534" />
+
+  <!-- Overlay Badge -->
+  <rect x="30" y="30" width="270" height="50" fill="rgba(255,255,255,0.92)" rx="25" />
+  <text x="50" y="62" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#065f46">NEXT ZERO 智慧永續校園</text>
+</svg>

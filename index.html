@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXT ZERO 校園永續拼圖解鎖計畫</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-badge">🌱 NEXT ZERO 校園行動提案</div>
+    <h1>校園永續社區拼圖</h1>
+    <p class="subtitle">完成日常減碳任務，合力解鎖全校綠色未來畫卷</p>
+  </header>
+
+  <main class="container">
+    <!-- 行動呼籲：開啟直傳彈窗 -->
+    <section class="card action-section">
+      <button type="button" class="btn-primary" id="btn-open-modal">
+        <span class="icon">📸</span> 點我上傳節能任務佐證
+      </button>
+      <p class="hint">免跳轉頁面，拍照直接上傳，審核通過即點亮拼圖！</p>
+    </section>
+
+    <!-- 核心拼圖互動區塊 -->
+    <section class="card puzzle-wrapper">
+      <div class="puzzle-header">
+        <h2>全校解鎖進度</h2>
+        <span class="badge-progress" id="progress-text">載入中...</span>
+      </div>
+      
+      <div id="puzzle-container">
+        <div id="grid"></div>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar-fill" style="width: 0%;"></div>
+      </div>
+    </section>
+
+    <!-- 實體減碳數據儀表板 -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-icon">🧩</span>
+        <div class="stat-info">
+          <h3 id="approved-count">0</h3>
+          <p>已解鎖板塊 / 16</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-icon">⚡</span>
+        <div class="stat-info">
+          <h3 id="saved-kwh">0</h3>
+          <p>預估省電 (度)</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-icon">🌿</span>
+        <div class="stat-info">
+          <h3 id="saved-carbon">0</h3>
+          <p>預估減碳 (kg CO₂e)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 三大任務指引 -->
+    <section class="card tasks-guide">
+      <h2>📋 三大減碳解鎖任務</h2>
+      <div class="task-list">
+        <div class="task-item">
+          <span class="task-tag tag-a">任務 A</span>
+          <div class="task-desc">
+            <strong>隨手節能：</strong>離開無人教室隨手關閉冷氣/電燈，或將空調設定為 26–28°C。
+          </div>
+        </div>
+        <div class="task-item">
+          <span class="task-tag tag-b">任務 B</span>
+          <div class="task-desc">
+            <strong>低碳生活：</strong>在校用餐自備環保餐具/環保杯，或以走樓梯替代 3 層以內電梯。
+          </div>
+        </div>
+        <div class="task-item">
+          <span class="task-tag tag-c">任務 C</span>
+          <div class="task-desc">
+            <strong>校園巡檢：</strong>巡查並拍照回報校園公用設備異常耗能或漏水情事。
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 前台內嵌式上傳彈窗 (Upload Modal) -->
+  <div class="modal-overlay" id="upload-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>📸 上傳節能任務佐證</h3>
+        <button type="button" class="btn-close" id="btn-close-modal">&times;</button>
+      </div>
+      <form id="upload-form">
+        <div class="form-group">
+          <label for="input-nickname">暱稱 / 系級（必填）</label>
+          <input type="text" id="input-nickname" placeholder="例如：電機三甲 黃同學" required>
+        </div>
+
+        <div class="form-group">
+          <label for="select-task">執行的節能任務（必選）</label>
+          <select id="select-task" required>
+            <option value="任務A. 隨手關閉無人冷氣/電燈 (調高溫度)">任務A. 隨手關閉無人冷氣/電燈 (空調 26-28°C)</option>
+            <option value="任務B. 自備環保餐具/環保杯 (走樓梯)">任務B. 自備環保餐具/環保杯 (少搭電梯)</option>
+            <option value="任務C. 巡檢並回報校園公用設備異常耗能">任務C. 巡檢並回報校園公用設備異常耗能</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="input-file">拍照或選取佐證照片（必選）</label>
+          <input type="file" id="input-file" accept="image/*" required>
+          <div class="image-preview" id="image-preview-container" style="display: none;">
+            <img id="image-preview" alt="照片預覽">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-cancel">取消</button>
+          <button type="submit" class="btn-primary" id="btn-submit">
+            <span id="submit-text">確認送出</span>
+            <span class="spinner" id="submit-spinner" style="display: none;"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>NEXT ZERO Campus Sustainability Initiative © 2026</p>
+    <p class="sub-footer">
+      日本參訪交流實踐專案 ｜ 
+      <a href="admin.html" class="admin-link">⚙️ 管理審核後台</a>
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

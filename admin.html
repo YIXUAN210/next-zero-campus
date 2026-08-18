@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXT ZERO 管理審核後台</title>
+  <link rel="stylesheet" href="admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- 頂部導航列 -->
+  <header class="admin-nav">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <span class="logo-icon">🌿</span>
+        <span class="brand-text">NEXT ZERO 管理審核後台</span>
+      </div>
+      <div class="nav-actions">
+        <a href="index.html" class="nav-link">⬅️ 返回前台拼圖</a>
+        <button type="button" class="btn-logout" id="btn-logout" style="display: none;">登出</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <!-- 登入驗證區塊 (Login Section) -->
+    <section class="auth-section card" id="auth-section">
+      <h2>🔐 管理員身分驗證</h2>
+      <p class="auth-subtitle">請輸入管理員安全金鑰以載入全校任務審核清單</p>
+      <form id="auth-form">
+        <div class="form-group">
+          <label for="admin-token">管理金鑰 (Token)</label>
+          <input type="password" id="admin-token" placeholder="預設為 NEXTZERO2026" required>
+        </div>
+        <button type="submit" class="btn-primary" id="btn-login">進入審核後台</button>
+      </form>
+    </section>
+
+    <!-- 審核管理面板 (Dashboard Section, 登入後顯示) -->
+    <section class="dashboard-section" id="dashboard-section" style="display: none;">
+      <!-- 統計數據概覽 -->
+      <div class="summary-cards">
+        <div class="sum-card card">
+          <h4>待審核件數</h4>
+          <span class="sum-num text-pending" id="count-pending">0</span>
+        </div>
+        <div class="sum-card card">
+          <h4>已通過件數</h4>
+          <span class="sum-num text-approved" id="count-approved">0</span>
+        </div>
+        <div class="sum-card card">
+          <h4>已退回件數</h4>
+          <span class="sum-num text-rejected" id="count-rejected">0</span>
+        </div>
+      </div>
+
+      <!-- 篩選與工具列 -->
+      <div class="toolbar card">
+        <div class="filter-group">
+          <label>狀態篩選：</label>
+          <button type="button" class="btn-filter active" data-filter="all">全部 (<span id="filter-all-count">0</span>)</button>
+          <button type="button" class="btn-filter" data-filter="待審核">待審核 (<span id="filter-pending-count">0</span>)</button>
+          <button type="button" class="btn-filter" data-filter="通過">已通過 (<span id="filter-approved-count">0</span>)</button>
+          <button type="button" class="btn-filter" data-filter="退回">已退回 (<span id="filter-rejected-count">0</span>)</button>
+        </div>
+        <button type="button" class="btn-refresh" id="btn-refresh">🔄 重新整理</button>
+      </div>
+
+      <!-- 卡片清單網格 -->
+      <div class="submissions-grid" id="submissions-grid">
+        <!-- JS 動態插入審核卡片 -->
+      </div>
+    </section>
+  </main>
+
+  <!-- 照片大圖預覽 Modal -->
+  <div class="modal-overlay" id="photo-modal">
+    <div class="photo-modal-card">
+      <button type="button" class="btn-close-photo" id="btn-close-photo">&times;</button>
+      <img id="photo-modal-img" src="" alt="照片大圖">
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

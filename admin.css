@@ -1,0 +1,351 @@
+:root {
+  --primary-color: #2e7d32;
+  --primary-hover: #1b5e20;
+  --bg-color: #f3f4f6;
+  --card-bg: #ffffff;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --color-pending: #d97706;
+  --color-approved: #15803d;
+  --color-rejected: #b91c1c;
+  --border-radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.admin-nav {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #14281d;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-logout {
+  background: none;
+  border: 1px solid #d1d5db;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #4b5563;
+}
+
+.btn-logout:hover {
+  background: #f3f4f6;
+}
+
+.admin-container {
+  max-width: 1000px;
+  margin: 28px auto;
+  padding: 0 16px;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* 登入區塊 */
+.auth-section {
+  max-width: 420px;
+  margin: 60px auto;
+  text-align: center;
+}
+
+.auth-section h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.form-group {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.btn-primary {
+  width: 100%;
+  background: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+/* 儀表數據 */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sum-card {
+  text-align: center;
+  padding: 18px;
+}
+
+.sum-card h4 {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.sum-num {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.text-pending { color: var(--color-pending); }
+.text-approved { color: var(--color-approved); }
+.text-rejected { color: var(--color-rejected); }
+
+/* 工具列 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 14px 20px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.btn-filter {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #4b5563;
+  transition: all 0.2s;
+}
+
+.btn-filter.active {
+  background: var(--primary-color);
+  color: #ffffff;
+  border-color: var(--primary-color);
+}
+
+.btn-refresh {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* 卡片網格 */
+.submissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.sub-card {
+  background: #ffffff;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.sub-img-box {
+  width: 100%;
+  height: 180px;
+  background: #f9fafb;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.sub-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.sub-img-box:hover img {
+  transform: scale(1.04);
+}
+
+.sub-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.badge-待審核 { background: #fef3c7; color: #b45309; }
+.badge-通過 { background: #dcfce7; color: #15803d; }
+.badge-退回 { background: #fee2e2; color: #b91c1c; }
+
+.sub-body {
+  padding: 16px;
+  flex-grow: 1;
+}
+
+.sub-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.sub-task {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.sub-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sub-actions {
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  gap: 10px;
+}
+
+.btn-approve, .btn-reject {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-approve { background: #16a34a; color: white; }
+.btn-reject { background: #dc2626; color: white; }
+.btn-approve:hover, .btn-reject:hover { opacity: 0.9; }
+
+/* 照片彈窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.active { display: flex; }
+.photo-modal-card {
+  position: relative;
+  max-width: 90vw;
+  max-height: 85vh;
+}
+.photo-modal-card img {
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 8px;
+}
+.btn-close-photo {
+  position: absolute;
+  top: -36px; right: 0;
+  background: none; border: none;
+  color: white; font-size: 32px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .summary-cards { grid-template-columns: 1fr; }
+  .toolbar { flex-direction: column; gap: 12px; align-items: flex-start; }
+}

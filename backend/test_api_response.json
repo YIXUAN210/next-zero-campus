@@ -1,0 +1,12 @@
+{
+  "status": "success",
+  "totalApproved": 12,
+  "taskCounts": {
+    "taskA": 6,
+    "taskB": 4,
+    "taskC": 2
+  },
+  "savedKWh": "7.8",
+  "savedCarbonKG": "4.07",
+  "timestamp": "2026-08-18T22:15:00.000Z"
+}
