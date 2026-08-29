@@ -278,9 +278,11 @@ body {
   white-space: nowrap;
 }
 
-.tag-a { background: #e0f2fe; color: #0284c7; }
-.tag-b { background: #dcfce7; color: #15803d; }
-.tag-c { background: #ffedd5; color: #c2410c; }
+.tag-a, .tag-1 { background: #e0f2fe; color: #0284c7; }
+.tag-b, .tag-2 { background: #dcfce7; color: #15803d; }
+.tag-c, .tag-3 { background: #ffedd5; color: #c2410c; }
+.tag-4 { background: #ccfbf1; color: #0f766e; }
+.tag-5 { background: #f3e8ff; color: #7e22ce; }
 
 /* 彈窗 Modal 樣式 */
 .modal-overlay {

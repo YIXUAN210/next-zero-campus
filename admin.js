@@ -94,25 +94,41 @@ async function fetchSubmissions() {
     allSubmissions = [
       {
         rowId: 2,
-        timestamp: "2026/08/18 21:30:15",
+        timestamp: "2026/08/29 11:15:20",
         nickname: "電機三甲 黃同學",
-        taskType: "任務A. 隨手關閉無人冷氣/電燈 (調高溫度)",
+        taskType: "任務 1. 教室空調設置成 26 度並隨手關閉電源",
         photoUrl: "puzzle.svg",
         status: "待審核"
       },
       {
         rowId: 3,
-        timestamp: "2026/08/18 21:42:08",
+        timestamp: "2026/08/29 11:30:45",
         nickname: "資工二乙 林同學",
-        taskType: "任務B. 自備環保餐具/環保杯 (走樓梯)",
+        taskType: "任務 2. 短程爬梯代替搭電梯",
         photoUrl: "puzzle.svg",
         status: "通過"
       },
       {
         rowId: 4,
-        timestamp: "2026/08/18 21:55:40",
-        nickname: "機械四丙 陳同學",
-        taskType: "任務C. 巡檢並回報校園公用設備異常耗能",
+        timestamp: "2026/08/29 11:42:10",
+        nickname: "電子四甲 趙同學",
+        taskType: "任務 3. 出門時拔除待機的電力",
+        photoUrl: "puzzle.svg",
+        status: "待審核"
+      },
+      {
+        rowId: 5,
+        timestamp: "2026/08/29 12:05:33",
+        nickname: "企管一丙 王同學",
+        taskType: "任務 4. 自備環保容器與環保杯",
+        photoUrl: "puzzle.svg",
+        status: "通過"
+      },
+      {
+        rowId: 6,
+        timestamp: "2026/08/29 12:20:18",
+        nickname: "資訊傳播三 陳同學",
+        taskType: "任務 5. 數位節能與設備休眠",
         photoUrl: "puzzle.svg",
         status: "待審核"
       }

@@ -55,7 +55,7 @@ function doGet(e) {
 
     // 情況 B (預設)：公開即時減碳統計數據
     var totalApproved = 0;
-    var taskCounts = { "taskA": 0, "taskB": 0, "taskC": 0 };
+    var taskCounts = { "task1": 0, "task2": 0, "task3": 0, "task4": 0, "task5": 0 };
 
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
@@ -64,25 +64,44 @@ function doGet(e) {
 
       if (auditStatus.trim() === "通過") {
         totalApproved++;
-        if (taskText.indexOf("冷氣") !== -1 || taskText.indexOf("任務A") !== -1) {
-          taskCounts.taskA++;
-        } else if (taskText.indexOf("餐具") !== -1 || taskText.indexOf("樓梯") !== -1 || taskText.indexOf("任務B") !== -1) {
-          taskCounts.taskB++;
-        } else {
-          taskCounts.taskC++;
+        // 任務 1: 空調 26 度與隨手關閉電源
+        if (taskText.indexOf("26") !== -1 || taskText.indexOf("空調") !== -1 || taskText.indexOf("冷氣") !== -1 || taskText.indexOf("任務 1") !== -1 || taskText.indexOf("任務A") !== -1) {
+          taskCounts.task1++;
+        }
+        // 任務 2: 短程爬梯代替搭電梯
+        else if (taskText.indexOf("爬梯") !== -1 || taskText.indexOf("樓梯") !== -1 || taskText.indexOf("電梯") !== -1 || taskText.indexOf("任務 2") !== -1 || taskText.indexOf("任務B") !== -1) {
+          taskCounts.task2++;
+        }
+        // 任務 3: 出門時拔除待機電力
+        else if (taskText.indexOf("待機") !== -1 || taskText.indexOf("拔除") !== -1 || taskText.indexOf("插頭") !== -1 || taskText.indexOf("任務 3") !== -1) {
+          taskCounts.task3++;
+        }
+        // 任務 4: 自備環保容器與環保杯
+        else if (taskText.indexOf("容器") !== -1 || taskText.indexOf("餐具") !== -1 || taskText.indexOf("環保杯") !== -1 || taskText.indexOf("自備") !== -1 || taskText.indexOf("任務 4") !== -1) {
+          taskCounts.task4++;
+        }
+        // 任務 5: 數位節能與設備休眠 (或其它任務)
+        else {
+          taskCounts.task5++;
         }
       }
     }
 
-    var savedKWh = (taskCounts.taskA * 1.0 + taskCounts.taskB * 0.2 + taskCounts.taskC * 0.5).toFixed(1);
-    var savedCarbonKG = (taskCounts.taskA * 0.495 + taskCounts.taskB * 0.15 + taskCounts.taskC * 0.25).toFixed(2);
+    // 能源節省與碳排係數公式計算 (依經濟部能源署及環境部係數)
+    // 任務 1: 1.0 kWh, 0.495 kg CO2e (空調節電)
+    // 任務 2: 0.2 kWh, 0.099 kg CO2e (爬梯省電)
+    // 任務 3: 0.3 kWh, 0.149 kg CO2e (拔除待機電力)
+    // 任務 4: 0.1 kWh, 0.150 kg CO2e (自備容器減塑減碳)
+    // 任務 5: 0.4 kWh, 0.198 kg CO2e (數位設備休眠)
+    var rawKWh = (taskCounts.task1 * 1.0) + (taskCounts.task2 * 0.2) + (taskCounts.task3 * 0.3) + (taskCounts.task4 * 0.1) + (taskCounts.task5 * 0.4);
+    var rawCarbon = (taskCounts.task1 * 0.495) + (taskCounts.task2 * 0.099) + (taskCounts.task3 * 0.149) + (taskCounts.task4 * 0.150) + (taskCounts.task5 * 0.198);
 
     return jsonResponse({
       status: "success",
       totalApproved: totalApproved,
       taskCounts: taskCounts,
-      savedKWh: savedKWh,
-      savedCarbonKG: savedCarbonKG,
+      savedKWh: rawKWh.toFixed(1),
+      savedCarbonKG: rawCarbon.toFixed(2),
       generatedAt: new Date().toISOString()
     });
 
