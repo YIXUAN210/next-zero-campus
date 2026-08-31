@@ -22,6 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     currentToken = savedToken;
     loginSuccess();
   }
+
+  // 跨分頁即時監聽：當前台有新案件送出時，後台自動即時載入呈現
+  window.addEventListener('storage', (e) => {
+    if (e.key === LOCAL_STORAGE_KEY && currentToken) {
+      fetchSubmissions();
+    }
+  });
 });
 
 /**
@@ -79,7 +86,9 @@ function setupToolbar() {
   });
 
   if (btnRefresh) {
-    btnRefresh.addEventListener('click', fetchSubmissions);
+    btnRefresh.addEventListener('click', () => {
+      fetchSubmissions();
+    });
   }
 }
 
@@ -88,11 +97,12 @@ function setupToolbar() {
  */
 async function fetchSubmissions() {
   const grid = document.getElementById('submissions-grid');
-  grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #537562; padding: 40px; font-weight: 600;">🔄 正在載入真實審核名單中...</p>';
+  if (!grid) return;
 
   // 情況 1：若有設定 GAS 雲端 API，向 Google 試算表拉取資料
   if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
     try {
+      grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #537562; padding: 40px; font-weight: 600;">🔄 正在從雲端載入真實審核名單中...</p>';
       const url = `${GAS_API_URL}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -155,7 +165,7 @@ function updateCounts() {
 function getMediaEmbedUrl(url) {
   if (!url || url === "無照片佐證") return "puzzle.svg";
 
-  // 若為 Base64 直接回傳
+  // 若為 Base64 圖片直接回傳
   if (url.startsWith("data:image")) return url;
 
   // 解析 Google Drive 檔案 ID
@@ -172,6 +182,7 @@ function getMediaEmbedUrl(url) {
  */
 function renderSubmissions() {
   const grid = document.getElementById('submissions-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   const filtered = allSubmissions.filter(s => {

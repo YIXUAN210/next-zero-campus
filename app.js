@@ -1,6 +1,6 @@
 /**
  * NEXT ZERO 校園永續拼圖 - 前端互動與直傳核心邏輯
- * 支援雙模架構：本地 LocalStorage 持久化引擎 + Google Apps Script 雲端同步
+ * 支援雙模架構：本地 LocalStorage 持久化引擎 (含智慧圖片壓縮) + Google Apps Script 雲端同步
  */
 
 // Google Apps Script Web App URL（選填，若未填寫則自動啟用本地 LocalStorage 實時持久化引擎）
@@ -15,6 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initGrid();
   loadProgressData();
   setupUploadModal();
+
+  // 跨分頁即時監聽：當後台審核通過時，前台自動即時更新拼圖與數據
+  window.addEventListener('storage', (e) => {
+    if (e.key === LOCAL_STORAGE_KEY) {
+      loadProgressData();
+    }
+  });
 });
 
 /**
@@ -31,6 +38,47 @@ function initGrid() {
     tile.innerText = i + 1;
     grid.appendChild(tile);
   }
+}
+
+/**
+ * 智慧相片壓縮函數（將高畫質大圖自動壓縮至 800px 輕量化 JPEG，徹底解決 LocalStorage 容量上限問題）
+ */
+function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+      img.src = e.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
@@ -61,22 +109,24 @@ function setupUploadModal() {
   if (btnClose) btnClose.addEventListener('click', closeModal);
   if (btnCancel) btnCancel.addEventListener('click', closeModal);
 
-  // 監聽相片選擇與 Base64 轉換
+  // 監聽相片選擇與自動壓縮處理
   if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
       currentImageName = file.name;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        currentBase64Image = event.target.result;
+      try {
+        // 執行自動壓縮
+        currentBase64Image = await compressImage(file);
         if (previewImg && previewContainer) {
           previewImg.src = currentBase64Image;
           previewContainer.style.display = 'block';
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("相片讀取或壓縮失敗:", err);
+        alert("⚠️ 相片讀取失敗，請重新選取照片！");
+      }
     });
   }
 
@@ -97,7 +147,7 @@ function setupUploadModal() {
 
       // 進入上傳中狀態
       if (btnSubmit) btnSubmit.disabled = true;
-      if (submitText) submitText.innerText = "上傳中...";
+      if (submitText) submitText.innerText = "處理中...";
       if (submitSpinner) submitSpinner.style.display = "inline-block";
 
       const now = new Date();
@@ -114,6 +164,7 @@ function setupUploadModal() {
       };
 
       // 1. 寫入本地持久化引擎 (LocalStorage)
+      let saveSuccess = false;
       try {
         let storedList = [];
         try {
@@ -123,8 +174,19 @@ function setupUploadModal() {
         }
         storedList.unshift(newSubmission);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedList));
+        saveSuccess = true;
       } catch (storageErr) {
-        console.warn("LocalStorage 儲存警示:", storageErr);
+        console.warn("LocalStorage 儲存警示 (嘗試二次超壓縮):", storageErr);
+        // 若空間不足，嘗試以極致低佔用方式儲存
+        try {
+          let storedList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+          newSubmission.photoUrl = "puzzle.svg"; // 降級為預設圖示保留文字紀錄
+          storedList.unshift(newSubmission);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedList));
+          saveSuccess = true;
+        } catch (fatalErr) {
+          console.error("無法寫入儲存空間:", fatalErr);
+        }
       }
 
       // 2. 若有設定 Google Apps Script API，同步寫入雲端試算表與 Drive
@@ -151,9 +213,13 @@ function setupUploadModal() {
       if (submitText) submitText.innerText = "確認送出";
       if (submitSpinner) submitSpinner.style.display = "none";
       
-      alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 狀態：【待審核】\n\n提示：請至管理後台點選「通過」審核，前台即會立即點亮拼圖並累計減碳數據！`);
-      closeModal();
-      loadProgressData();
+      if (saveSuccess) {
+        alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 狀態：【待審核】\n\n提示：請至管理後台點選「通過」審核，前台即會立即點亮拼圖並累計減碳數據！`);
+        closeModal();
+        loadProgressData();
+      } else {
+        alert("⚠️ 儲存發生異常，請重試！");
+      }
     });
   }
 }
