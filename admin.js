@@ -177,6 +177,25 @@ function updateCounts() {
 /**
  * 渲染卡片清單
  */
+/**
+ * 解析媒體網址：將 Google Drive 網址轉換為直接可嵌入 <img> 的縮圖網址
+ */
+function getMediaEmbedUrl(url) {
+  if (!url || url === "無照片佐證") return "puzzle.svg";
+
+  // 解析 Google Drive 檔案 ID
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    const fileId = match[1];
+    // Google Drive 高畫質縮圖端點
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+  }
+  return url;
+}
+
+/**
+ * 渲染卡片清單
+ */
 function renderSubmissions() {
   const grid = document.getElementById('submissions-grid');
   grid.innerHTML = '';
@@ -194,15 +213,24 @@ function renderSubmissions() {
   filtered.forEach(item => {
     const card = document.createElement('div');
     card.className = 'sub-card';
+    const embedImgUrl = getMediaEmbedUrl(item.photoUrl);
+    const hasValidDriveLink = item.photoUrl && item.photoUrl.indexOf("http") !== -1;
+
     card.innerHTML = `
-      <div class="sub-img-box" onclick="showPhoto('${item.photoUrl}')">
-        <img src="${item.photoUrl}" alt="佐證照片" onerror="this.src='puzzle.svg'">
+      <div class="sub-img-box" onclick="showPhoto('${embedImgUrl}', '${item.photoUrl}')">
+        <img src="${embedImgUrl}" alt="佐證照片" loading="lazy" onerror="this.onerror=null; this.src='puzzle.svg';">
         <span class="sub-badge badge-${item.status}">${item.status}</span>
+        <div class="img-hint-overlay">🔍 點擊查看大圖 / 影片</div>
       </div>
       <div class="sub-body">
         <div class="sub-title">${escapeHtml(item.nickname)}</div>
         <div class="sub-task">📋 ${escapeHtml(item.taskType)}</div>
         <div class="sub-time">🕒 ${escapeHtml(String(item.timestamp))}</div>
+        ${hasValidDriveLink ? `
+          <a href="${item.photoUrl}" target="_blank" rel="noopener noreferrer" class="link-drive-file" onclick="event.stopPropagation()">
+            🔗 在雲端開啟原檔 / 影片
+          </a>
+        ` : ''}
       </div>
       <div class="sub-actions">
         <button type="button" class="btn-approve" onclick="auditTask(${item.rowId}, '通過')">✅ 通過</button>
@@ -271,11 +299,17 @@ function setupPhotoModal() {
   }
 }
 
-function showPhoto(url) {
+function showPhoto(embedUrl, originalUrl) {
   const modal = document.getElementById('photo-modal');
   const modalImg = document.getElementById('photo-modal-img');
+  const driveLink = document.getElementById('photo-modal-drive-link');
+
   if (modal && modalImg) {
-    modalImg.src = url;
+    modalImg.src = embedUrl;
+    if (driveLink) {
+      driveLink.href = originalUrl || embedUrl;
+      driveLink.style.display = (originalUrl && originalUrl.indexOf("http") !== -1) ? 'inline-block' : 'none';
+    }
     modal.classList.add('active');
   }
 }
