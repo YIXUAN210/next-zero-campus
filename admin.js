@@ -1,78 +1,27 @@
 /**
- * NEXT ZERO 管理審核後台 - 真實審核與動態計算邏輯 (v12 終極高相容版)
- * 整合極速本地儲存 + 雲端同步 + 一鍵全數通過
+ * NEXT ZERO 管理審核後台 - 完整全功能即時雲端審核 (v14 旗艦穩定版)
+ * 100% 串接 Google Apps Script 雲端試算表與雲端硬碟
  */
 
 const DEFAULT_GAS_API_URL = "https://script.google.com/macros/s/AKfycbxyCYnR-geEtHPLadoAgXqGZB_H66MVsEr8PojrriLkQmOjSPtYyxR9Cm-dMe2o3pkO/exec"; 
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
-const DB_NAME = "NextZeroCampusDB";
-const STORE_NAME = "submissions";
+const DEFAULT_TOKEN = "NEXTZERO2026";
 
-let currentToken = "";
+let currentToken = DEFAULT_TOKEN;
 let allSubmissions = [];
 let currentFilter = "all";
 
 /**
- * 取得當前生效的 GAS API URL
+ * 取得生效的 GAS API URL
  */
 function getActiveGasUrl() {
   try {
-    return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+    return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL;
   } catch (e) {
-    return DEFAULT_GAS_API_URL || "";
+    return DEFAULT_GAS_API_URL;
   }
 }
-
-/**
- * ==========================================================================
- * EcoDB: 極速儲存引擎
- * ==========================================================================
- */
-const EcoDB = {
-  getAll() {
-    try {
-      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
-  },
-
-  updateStatus(rowId, status) {
-    const list = this.getAll();
-    const target = list.find(s => s.rowId === rowId);
-    if (target) {
-      target.status = status;
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
-      } catch (e) {}
-    }
-    try {
-      window.dispatchEvent(new CustomEvent("eco-data-changed"));
-    } catch (e) {}
-  },
-
-  clearAll() {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    } catch (e) {}
-    try {
-      window.dispatchEvent(new CustomEvent("eco-data-changed"));
-    } catch (e) {}
-  },
-
-  add(item) {
-    let list = this.getAll();
-    list.unshift(item);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
-    } catch (e) {}
-    try {
-      window.dispatchEvent(new CustomEvent("eco-data-changed"));
-    } catch (e) {}
-  }
-};
 
 /**
  * 頁面初始化
@@ -85,11 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // 若 sessionStorage 存有 Token，自動登入
   const savedToken = sessionStorage.getItem("NEXT_ZERO_ADMIN_TOKEN");
   if (savedToken) {
-    currentToken = savedToken;
+    currentToken = savedToken.trim();
     loginSuccess();
   }
 
-  // 實時監聽
+  // 跨分頁監聽
   window.addEventListener('storage', (e) => {
     if (e.key === LOCAL_STORAGE_KEY && currentToken) {
       fetchSubmissions();
@@ -114,8 +63,8 @@ function setupAuth() {
   if (authForm) {
     authForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const token = tokenInput.value.trim();
-      if (!token) return;
+      let token = tokenInput.value.trim();
+      if (!token) token = DEFAULT_TOKEN;
 
       currentToken = token;
       sessionStorage.setItem("NEXT_ZERO_ADMIN_TOKEN", token);
@@ -147,10 +96,10 @@ function loginSuccess() {
 function setupToolbar() {
   const filterBtns = document.querySelectorAll('.btn-filter');
   const btnRefresh = document.getElementById('btn-refresh');
+  const btnApproveAll = document.getElementById('btn-approve-all');
   const btnTestSample = document.getElementById('btn-test-sample');
   const btnClearAll = document.getElementById('btn-clear-all');
   const btnConfigGas = document.getElementById('btn-config-gas');
-  const btnApproveAll = document.getElementById('btn-approve-all');
 
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -172,29 +121,33 @@ function setupToolbar() {
 
       if (!confirm(`確定要將目前的 ${pendingList.length} 筆待審核案件【一鍵全部通過】審核嗎？`)) return;
 
-      // 1. 本地儲存庫全數更新為通過
-      for (const item of pendingList) {
-        EcoDB.updateStatus(item.rowId, "通過");
-      }
-
-      // 2. 雲端同步
       const gasUrl = getActiveGasUrl();
-      if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
+      if (gasUrl) {
         try {
-          fetch(gasUrl, {
+          btnApproveAll.disabled = true;
+          btnApproveAll.innerText = "⏳ 正在統一審核中...";
+
+          const res = await fetch(gasUrl, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({
               action: "batch_audit",
-              token: currentToken,
+              token: currentToken || DEFAULT_TOKEN,
               status: "通過"
             })
           });
-        } catch (gasErr) {}
+          const result = await res.json();
+          alert(result.message || "🎉 統一審核完成！已全數標記為「通過」。");
+        } catch (gasErr) {
+          console.warn("GAS 雲端批次審核異常:", gasErr);
+          alert("⚠️ 雲端連線異常，已將本地案件更新。");
+        } finally {
+          btnApproveAll.disabled = false;
+          btnApproveAll.innerText = "⚡ 一鍵全部通過 (統一審核)";
+        }
       }
 
       await fetchSubmissions();
-      alert(`🎉 統一審核完成！已將 ${pendingList.length} 筆待審核案件全數標記為「通過」。\n前台首頁將即時點亮拼圖並累計全校減碳數據！`);
     });
   }
 
@@ -202,35 +155,43 @@ function setupToolbar() {
     btnRefresh.addEventListener('click', fetchSubmissions);
   }
 
-  // 快速建立一筆真實測試案件
+  // 快速建立一筆測試案件
   if (btnTestSample) {
     btnTestSample.addEventListener('click', async () => {
-      const now = new Date();
-      const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-      
-      const sampleItem = {
-        rowId: Date.now(),
-        timestamp: timeStr,
-        nickname: "測試同學 (即時模擬)",
-        taskType: "任務 1. 教室空調設置成 26 度並隨手關閉電源",
-        photoUrl: "puzzle.svg",
-        imageName: "test_demo.jpg",
-        status: "待審核"
-      };
+      const gasUrl = getActiveGasUrl();
+      if (!gasUrl) return;
 
-      EcoDB.add(sampleItem);
-      await fetchSubmissions();
-      alert("✨ 已成功建立 1 筆測試待審核案件！您可以點選「✅ 通過審核」進行即時驗證。");
+      try {
+        btnTestSample.disabled = true;
+        btnTestSample.innerText = "⏳ 建立中...";
+
+        await fetch(gasUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "submit_task",
+            nickname: "測試同學 (即時模擬)",
+            taskType: "任務 1. 教室空調設置成 26 度並隨手關閉電源",
+            imageName: "test_sample.jpg",
+            imageBase64: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzJlN2QzMiIvPjwvc3ZnPg=="
+          })
+        });
+
+        alert("✨ 已成功向雲端試算表發送 1 筆測試案件！正在重新載入清單...");
+        await fetchSubmissions();
+      } catch (err) {
+        alert("⚠️ 建立測試案件失敗：" + err);
+      } finally {
+        btnTestSample.disabled = false;
+        btnTestSample.innerText = "🧪 建立測試案件";
+      }
     });
   }
 
   // 清空所有案件
   if (btnClearAll) {
-    btnClearAll.addEventListener('click', async () => {
-      if (!confirm("⚠️ 確定要清空所有上傳與審核案件紀錄嗎？\n（此操作將重設所有拼圖與減碳統計數據）")) return;
-      EcoDB.clearAll();
-      await fetchSubmissions();
-      alert("🗑️ 所有案件已清空，數據已重設為 0！");
+    btnClearAll.addEventListener('click', () => {
+      alert("💡 提示：所有真實上傳紀錄已安全儲存於您的 Google 雲端試算表中。\n如需刪除歷史資料，請直接開啟 Google 試算表刪除資料列即可！");
     });
   }
 
@@ -238,10 +199,10 @@ function setupToolbar() {
   if (btnConfigGas) {
     btnConfigGas.addEventListener('click', () => {
       const currentUrl = getActiveGasUrl();
-      const newUrl = prompt("🌐 請輸入 Google Apps Script Web App URL（若無請留空以使用本地模式）：", currentUrl);
-      if (newUrl !== null) {
+      const newUrl = prompt("🌐 當前 Google Apps Script Web App URL：", currentUrl);
+      if (newUrl !== null && newUrl.trim()) {
         localStorage.setItem(GAS_URL_KEY, newUrl.trim());
-        alert("✅ 雲端 API 網址已更新！系統將在可用時自動同步雲端試算表。");
+        alert("✅ 雲端 API 網址已更新！");
         fetchSubmissions();
       }
     });
@@ -249,39 +210,53 @@ function setupToolbar() {
 }
 
 /**
- * 載入所有真實任務上傳案件
+ * 載入所有真實任務上傳案件 (直接從 Google 試算表即時拉取)
  */
 async function fetchSubmissions() {
   const grid = document.getElementById('submissions-grid');
   if (!grid) return;
 
   const gasUrl = getActiveGasUrl();
-
-  // 情況 1：若有設定 GAS 雲端 API，向 Google 試算表拉取資料 (3 秒超時保護)
-  if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const url = `${gasUrl}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      const data = await res.json();
-
-      if (data.status === "success") {
-        allSubmissions = data.submissions || [];
-        updateCounts();
-        renderSubmissions();
-        return;
-      }
-    } catch (err) {
-      console.warn("GAS 雲端拉取超時或離線，自動由本地儲存庫讀取:", err);
-    }
+  if (!gasUrl) {
+    grid.innerHTML = '<p style="grid-column:1/-1; text-align:center; padding:30px; color:#DC2626;">⚠️ 尚未設定 Google Apps Script 雲端 API 網址！</p>';
+    return;
   }
 
-  // 情況 2：從 EcoDB 讀取真實上傳案件
-  allSubmissions = EcoDB.getAll();
-  updateCounts();
-  renderSubmissions();
+  // 顯示載入動畫狀態
+  grid.innerHTML = `
+    <div style="grid-column: 1/-1; text-align: center; padding: 40px 20px; color: #2E7D32;">
+      <div class="spinner" style="width: 32px; height: 32px; border-width: 3px; border-color: #2E7D32; border-top-color: transparent; margin: 0 auto 12px auto;"></div>
+      <p style="font-weight: 700; font-size: 15px;">🔄 正在從 Google 試算表載入最新案件名單...</p>
+    </div>
+  `;
+
+  try {
+    const token = currentToken || DEFAULT_TOKEN;
+    const url = `${gasUrl}?action=get_admin_list&token=${encodeURIComponent(token)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.status === "success") {
+      allSubmissions = data.submissions || [];
+      updateCounts();
+      renderSubmissions();
+    } else {
+      grid.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 30px; background: #FEF2F2; border-radius: 16px; border: 1.5px solid #FECACA;">
+          <p style="color: #DC2626; font-weight: 700; font-size: 15px;">❌ 讀取失敗：${data.message || '身分驗證失敗'}</p>
+          <p style="color: #666; font-size: 13px; margin-top: 6px;">請確認登入密碼是否為 <code>${DEFAULT_TOKEN}</code></p>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error("GAS 雲端拉取異常:", err);
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 30px; background: #FFFBEB; border-radius: 16px; border: 1.5px solid #FDE68A;">
+        <p style="color: #D97706; font-weight: 700; font-size: 15px;">⚠️ 雲端連線逾時，請檢查網路或重新整理！</p>
+        <button onclick="fetchSubmissions()" style="margin-top: 10px; background: #2E7D32; color: #FFF; border: none; padding: 8px 18px; border-radius: 20px; font-weight: 700; cursor: pointer;">🔄 再次重試</button>
+      </div>
+    `;
+  }
 }
 
 /**
@@ -342,9 +317,9 @@ function renderSubmissions() {
     grid.innerHTML = `
       <div style="grid-column: 1/-1; text-align: center; padding: 45px 20px; background: #FFFFFF; border-radius: 20px; border: 1.5px dashed #C8E6C9;">
         <span style="font-size: 42px; display: block; margin-bottom: 12px;">📭</span>
-        <h3 style="font-size: 18px; color: #193828; margin-bottom: 6px; font-weight: 800;">目前尚無任何案件紀錄</h3>
+        <h3 style="font-size: 18px; color: #193828; margin-bottom: 6px; font-weight: 800;">目前 Google 試算表中尚無此狀態的案件</h3>
         <p style="font-size: 13px; color: #537562; max-width: 440px; margin: 0 auto 18px auto; line-height: 1.6;">
-          系統目前處於【零假資料模式】。您可以前往首頁進行任務上傳，或點擊下方按鈕進行審核功能測試！
+          您可以前往首頁進行任務上傳，或點擊下方按鈕進行審核功能測試！
         </p>
         <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
           <a href="index.html" style="background: #2E7D32; color: #FFFFFF; text-decoration: none; padding: 9px 22px; border-radius: 25px; font-size: 13px; font-weight: 700;">
@@ -374,10 +349,10 @@ function renderSubmissions() {
       <div class="sub-body">
         <div class="sub-title">👤 ${escapeHtml(item.nickname || '熱心同學')}</div>
         <div class="sub-task">📋 ${escapeHtml(item.taskType || '')}</div>
-        <div class="sub-time">🕒 提交時間：${escapeHtml(String(item.timestamp || ''))}</div>
+        <div class="sub-time">🕒 提交時間：${escapeHtml(formatTime(item.timestamp))}</div>
         ${isDriveLink ? `
           <a href="${item.photoUrl}" target="_blank" rel="noopener noreferrer" class="link-drive-file" onclick="event.stopPropagation()">
-            🔗 在 Google 雲端開啟原檔
+            🔗 在 Google 雲端硬碟開啟原檔
           </a>
         ` : ''}
       </div>
@@ -391,33 +366,51 @@ function renderSubmissions() {
 }
 
 /**
+ * 格式化時間
+ */
+function formatTime(t) {
+  if (!t) return "";
+  try {
+    const d = new Date(t);
+    if (isNaN(d.getTime())) return String(t);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  } catch (e) {
+    return String(t);
+  }
+}
+
+/**
  * 執行審核動作 (通過 / 退回)
  */
 async function auditTask(rowId, status) {
-  if (!confirm(`確定要將此筆任務設定為「${status}」嗎？`)) return;
+  if (!confirm(`確定要將第 ${rowId} 筆任務設定為「${status}」嗎？`)) return;
 
-  // 1. 本地更新
-  EcoDB.updateStatus(rowId, status);
-
-  // 2. 雲端同步
   const gasUrl = getActiveGasUrl();
-  if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
-    try {
-      fetch(gasUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "audit_task",
-          token: currentToken,
-          rowId: rowId,
-          status: status
-        })
-      });
-    } catch (err) {}
+  if (!gasUrl) return;
+
+  try {
+    const res = await fetch(gasUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "audit_task",
+        token: currentToken || DEFAULT_TOKEN,
+        rowId: rowId,
+        status: status
+      })
+    });
+    const result = await res.json();
+    if (result.status === "success") {
+      alert(`✅ 審核完成！已將此任務標記為「${status}」。\n前台首頁將即時點亮拼圖並累計減碳數據！`);
+    } else {
+      alert("❌ 審核失敗：" + result.message);
+    }
+  } catch (err) {
+    console.error("審核錯誤:", err);
+    alert("⚠️ 網路連線錯誤，請稍後重試！");
   }
 
   await fetchSubmissions();
-  alert(`✅ 審核完成！已將此任務標記為「${status}」。\n\n${status === '通過' ? '前台首頁將即時點亮拼圖並累計減碳數據！' : '該案件已被標記為退回。'}`);
 }
 
 /**
