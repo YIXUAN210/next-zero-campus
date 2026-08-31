@@ -803,6 +803,18 @@ body {
   color: var(--text-light);
 }
 
+.admin-discreet-link {
+  color: var(--text-light);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.admin-discreet-link:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
 /* 響應式手機排版 (Responsive Mobile) */
 @media (max-width: 600px) {
   .hero-title { font-size: 26px; }
