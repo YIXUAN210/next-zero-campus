@@ -3,7 +3,7 @@
  * 支援：同步輕量持久化 + 非阻塞非同步 IndexedDB + 雲端同步 + 零卡頓保護
  */
 
-const DEFAULT_GAS_API_URL = ""; 
+const DEFAULT_GAS_API_URL = "https://script.google.com/macros/s/AKfycbxyCYnR-geEtHPLadoAgXqGZB_H66MVsEr8PojrriLkQmOjSPtYyxR9Cm-dMe2o3pkO/exec"; 
 const TOTAL_TILES = 9; // 3x3 網格共 9 塊
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";

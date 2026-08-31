@@ -3,7 +3,7 @@
  * 整合極速本地儲存 + 雲端同步 + 一鍵全數通過
  */
 
-const DEFAULT_GAS_API_URL = ""; 
+const DEFAULT_GAS_API_URL = "https://script.google.com/macros/s/AKfycbxyCYnR-geEtHPLadoAgXqGZB_H66MVsEr8PojrriLkQmOjSPtYyxR9Cm-dMe2o3pkO/exec"; 
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
 const DB_NAME = "NextZeroCampusDB";
