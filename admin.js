@@ -1,20 +1,162 @@
 /**
- * NEXT ZERO 管理審核後台 - 真實審核與動態計算邏輯
- * 零假資料：所有待審核與已審核案件均來自使用者真實上傳！
+ * NEXT ZERO 管理審核後台 - 真實審核與動態計算邏輯 (v8 旗艦穩定版)
+ * 整合 IndexedDB + LocalStorage 雙核心引擎 + 雲端同步管理
+ * 零假資料：所有案件均來自真實上傳或管理員手動測試！
  */
 
-// Google Apps Script Web App URL（選填，若未填寫則自動啟用本地 LocalStorage 實時持久化引擎）
-const GAS_API_URL = ""; 
-
+// 預設 Google Apps Script Web App URL
+const DEFAULT_GAS_API_URL = ""; 
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
+const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
+const DB_NAME = "NextZeroCampusDB";
+const STORE_NAME = "submissions";
+
 let currentToken = "";
 let allSubmissions = [];
 let currentFilter = "all";
 
+/**
+ * 取得當前生效的 GAS API URL
+ */
+function getActiveGasUrl() {
+  return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+}
+
+/**
+ * ==========================================================================
+ * EcoDB: 瀏覽器 IndexedDB + LocalStorage 雙層儲存引擎
+ * ==========================================================================
+ */
+const EcoDB = {
+  open() {
+    return new Promise((resolve) => {
+      if (!window.indexedDB) {
+        resolve(null);
+        return;
+      }
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: "rowId" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+    });
+  },
+
+  async getAll() {
+    try {
+      const db = await this.open();
+      if (db) {
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readonly");
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const list = req.result || [];
+            if (list.length > 0) {
+              resolve(list.sort((a, b) => b.rowId - a.rowId));
+              return;
+            }
+            resolve(this.getFromLocalStorage());
+          };
+          req.onerror = () => resolve(this.getFromLocalStorage());
+        });
+      }
+    } catch (e) {
+      console.warn("IndexedDB 讀取異常:", e);
+    }
+    return this.getFromLocalStorage();
+  },
+
+  getFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async updateStatus(rowId, status) {
+    // 更新 IndexedDB
+    try {
+      const db = await this.open();
+      if (db) {
+        await new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.get(rowId);
+          req.onsuccess = () => {
+            const item = req.result;
+            if (item) {
+              item.status = status;
+              store.put(item);
+            }
+            resolve();
+          };
+          req.onerror = () => resolve();
+        });
+      }
+    } catch (e) {
+      console.warn("IndexedDB 更新異常:", e);
+    }
+
+    // 更新 LocalStorage
+    const list = this.getFromLocalStorage();
+    const target = list.find(s => s.rowId === rowId);
+    if (target) {
+      target.status = status;
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {}
+    }
+
+    // 觸發自訂事件廣播
+    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+  },
+
+  async clearAll() {
+    try {
+      const db = await this.open();
+      if (db) {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).clear();
+      }
+    } catch (e) {}
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+  },
+
+  async add(item) {
+    try {
+      const db = await this.open();
+      if (db) {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).put(item);
+      }
+    } catch (e) {}
+
+    let list = this.getFromLocalStorage();
+    list.unshift(item);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+
+    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+  }
+};
+
+/**
+ * 頁面初始化
+ */
 document.addEventListener('DOMContentLoaded', () => {
   setupAuth();
   setupToolbar();
   setupPhotoModal();
+  setupCloudSettingsModal();
 
   // 若 sessionStorage 存有 Token，自動嘗試登入
   const savedToken = sessionStorage.getItem("NEXT_ZERO_ADMIN_TOKEN");
@@ -23,11 +165,17 @@ document.addEventListener('DOMContentLoaded', () => {
     loginSuccess();
   }
 
-  // 跨分頁即時監聽：當前台有新案件送出時，後台自動即時載入呈現
+  // 跨分頁與同分頁實時監聽
   window.addEventListener('storage', (e) => {
     if (e.key === LOCAL_STORAGE_KEY && currentToken) {
       fetchSubmissions();
     }
+  });
+  window.addEventListener('eco-data-changed', () => {
+    if (currentToken) fetchSubmissions();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentToken) fetchSubmissions();
   });
 });
 
@@ -70,11 +218,14 @@ function loginSuccess() {
 }
 
 /**
- * 工具列與篩選器設定
+ * 工具列與按鈕事件設定
  */
 function setupToolbar() {
   const filterBtns = document.querySelectorAll('.btn-filter');
   const btnRefresh = document.getElementById('btn-refresh');
+  const btnTestSample = document.getElementById('btn-test-sample');
+  const btnClearAll = document.getElementById('btn-clear-all');
+  const btnConfigGas = document.getElementById('btn-config-gas');
 
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -86,8 +237,51 @@ function setupToolbar() {
   });
 
   if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => {
-      fetchSubmissions();
+    btnRefresh.addEventListener('click', fetchSubmissions);
+  }
+
+  // 快速建立一筆真實測試案件 (方便使用者一鍵驗證審核流程)
+  if (btnTestSample) {
+    btnTestSample.addEventListener('click', async () => {
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      
+      const sampleItem = {
+        rowId: Date.now(),
+        timestamp: timeStr,
+        nickname: "測試同學 (即時模擬)",
+        taskType: "任務 1. 教室空調設置成 26 度並隨手關閉電源",
+        photoUrl: "puzzle.svg",
+        imageName: "test_demo.jpg",
+        status: "待審核"
+      };
+
+      await EcoDB.add(sampleItem);
+      await fetchSubmissions();
+      alert("✨ 已成功建立 1 筆測試待審核案件！您可以點選「✅ 通過審核」進行即時驗證。");
+    });
+  }
+
+  // 清空所有案件
+  if (btnClearAll) {
+    btnClearAll.addEventListener('click', async () => {
+      if (!confirm("⚠️ 確定要清空所有上傳與審核案件紀錄嗎？\n（此操作將重設所有拼圖與減碳統計數據）")) return;
+      await EcoDB.clearAll();
+      await fetchSubmissions();
+      alert("🗑️ 所有案件已清空，數據已重設為 0！");
+    });
+  }
+
+  // 雲端 API 設定
+  if (btnConfigGas) {
+    btnConfigGas.addEventListener('click', () => {
+      const currentUrl = getActiveGasUrl();
+      const newUrl = prompt("🌐 請輸入 Google Apps Script Web App URL（若無請留空以使用本地模式）：", currentUrl);
+      if (newUrl !== null) {
+        localStorage.setItem(GAS_URL_KEY, newUrl.trim());
+        alert("✅ 雲端 API 網址已更新！系統將在可用時自動同步雲端試算表。");
+        fetchSubmissions();
+      }
     });
   }
 }
@@ -99,11 +293,13 @@ async function fetchSubmissions() {
   const grid = document.getElementById('submissions-grid');
   if (!grid) return;
 
+  const gasUrl = getActiveGasUrl();
+
   // 情況 1：若有設定 GAS 雲端 API，向 Google 試算表拉取資料
-  if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
+  if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
     try {
-      grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #537562; padding: 40px; font-weight: 600;">🔄 正在從雲端載入真實審核名單中...</p>';
-      const url = `${GAS_API_URL}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
+      grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #537562; padding: 40px; font-weight: 600;">🔄 正在從雲端 Google 試算表載入審核名單中...</p>';
+      const url = `${gasUrl}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
       const res = await fetch(url);
       const data = await res.json();
 
@@ -112,22 +308,14 @@ async function fetchSubmissions() {
         updateCounts();
         renderSubmissions();
         return;
-      } else {
-        alert("❌ " + (data.message || "驗證失敗或讀取錯誤"));
       }
     } catch (err) {
-      console.warn("GAS 雲端拉取失敗，自動讀取本地儲存庫:", err);
+      console.warn("GAS 雲端拉取失敗，自動由本地雙核心儲存庫讀取:", err);
     }
   }
 
-  // 情況 2：讀取本地儲存庫中的真實上傳案件
-  try {
-    const rawData = localStorage.getItem(LOCAL_STORAGE_KEY);
-    allSubmissions = rawData ? JSON.parse(rawData) : [];
-  } catch (e) {
-    allSubmissions = [];
-  }
-
+  // 情況 2：從 EcoDB (IndexedDB + LocalStorage) 讀取真實上傳案件
+  allSubmissions = await EcoDB.getAll();
   updateCounts();
   renderSubmissions();
 }
@@ -160,19 +348,15 @@ function updateCounts() {
 }
 
 /**
- * 解析媒體網址：將 Google Drive 網址轉換為直接可嵌入 <img> 的縮圖網址
+ * 解析媒體網址
  */
 function getMediaEmbedUrl(url) {
   if (!url || url === "無照片佐證") return "puzzle.svg";
-
-  // 若為 Base64 圖片直接回傳
   if (url.startsWith("data:image")) return url;
 
-  // 解析 Google Drive 檔案 ID
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
-    const fileId = match[1];
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
   }
   return url;
 }
@@ -192,15 +376,20 @@ function renderSubmissions() {
 
   if (filtered.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1/-1; text-align: center; padding: 50px 20px; background: #FFFFFF; border-radius: 16px; border: 1.5px dashed #C8E6C9;">
-        <span style="font-size: 40px; display: block; margin-bottom: 12px;">📭</span>
-        <h3 style="font-size: 17px; color: #193828; margin-bottom: 6px; font-weight: 700;">目前尚無任何案件紀錄</h3>
-        <p style="font-size: 13px; color: #537562; max-width: 420px; margin: 0 auto 16px auto;">
-          本系統不包含任何預設假資料。請先至前台首頁填寫表單並上傳照片，送出後的真實案件將即時顯示於此處！
+      <div style="grid-column: 1/-1; text-align: center; padding: 45px 20px; background: #FFFFFF; border-radius: 20px; border: 1.5px dashed #C8E6C9;">
+        <span style="font-size: 42px; display: block; margin-bottom: 12px;">📭</span>
+        <h3 style="font-size: 18px; color: #193828; margin-bottom: 6px; font-weight: 800;">目前尚無任何案件紀錄</h3>
+        <p style="font-size: 13px; color: #537562; max-width: 440px; margin: 0 auto 18px auto; line-height: 1.6;">
+          系統目前處於【零假資料模式】。您可以前往首頁進行任務上傳，或點擊下方按鈕進行審核功能測試！
         </p>
-        <a href="index.html" style="display: inline-block; background: #2E7D32; color: #FFFFFF; text-decoration: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 700;">
-          ⬅️ 前往首頁上傳任務
-        </a>
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+          <a href="index.html" style="background: #2E7D32; color: #FFFFFF; text-decoration: none; padding: 9px 22px; border-radius: 25px; font-size: 13px; font-weight: 700;">
+            📸 前往首頁拍照上傳
+          </a>
+          <button type="button" onclick="document.getElementById('btn-test-sample').click()" style="background: #E8F5E9; color: #2E7D32; border: 1.5px solid #A5D6A7; padding: 9px 20px; border-radius: 25px; font-size: 13px; font-weight: 700; cursor: pointer;">
+            🧪 產生一筆測試案件
+          </button>
+        </div>
       </div>
     `;
     return;
@@ -219,7 +408,7 @@ function renderSubmissions() {
         <div class="img-hint-overlay">🔍 點擊檢視佐證大圖</div>
       </div>
       <div class="sub-body">
-        <div class="sub-title">👤 ${escapeHtml(item.nickname || '未填寫暱稱')}</div>
+        <div class="sub-title">👤 ${escapeHtml(item.nickname || '熱心同學')}</div>
         <div class="sub-task">📋 ${escapeHtml(item.taskType || '')}</div>
         <div class="sub-time">🕒 提交時間：${escapeHtml(String(item.timestamp || ''))}</div>
         ${isDriveLink ? `
@@ -243,21 +432,14 @@ function renderSubmissions() {
 async function auditTask(rowId, status) {
   if (!confirm(`確定要將此筆任務設定為「${status}」嗎？`)) return;
 
-  // 1. 本地儲存庫實時更新
-  const target = allSubmissions.find(s => s.rowId === rowId);
-  if (target) {
-    target.status = status;
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(allSubmissions));
-    } catch (e) {
-      console.warn("LocalStorage 寫入異常:", e);
-    }
-  }
+  // 1. 本地雙核心儲存庫更新
+  await EcoDB.updateStatus(rowId, status);
 
   // 2. 若有設定 GAS 雲端 API，同步更新雲端試算表
-  if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
+  const gasUrl = getActiveGasUrl();
+  if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
     try {
-      await fetch(GAS_API_URL, {
+      await fetch(gasUrl, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
@@ -272,10 +454,8 @@ async function auditTask(rowId, status) {
     }
   }
 
-  updateCounts();
-  renderSubmissions();
-  
-  alert(`✅ 審核完成！已將此任務標記為「${status}」。\n${status === '通過' ? '前台首頁將即時點亮拼圖並累計減碳數據！' : '該案件已被退回。'}`);
+  await fetchSubmissions();
+  alert(`✅ 審核完成！已將此任務標記為「${status}」。\n\n${status === '通過' ? '前台首頁將即時點亮拼圖並累計減碳數據！' : '該案件已被標記為退回。'}`);
 }
 
 /**
@@ -306,6 +486,10 @@ function showPhoto(embedUrl, originalUrl) {
     }
     modal.classList.add('active');
   }
+}
+
+function setupCloudSettingsModal() {
+  // Reserved for additional modal setup if needed
 }
 
 function escapeHtml(str) {

@@ -66,7 +66,12 @@
           <button type="button" class="btn-filter" data-filter="通過">已通過 (<span id="filter-approved-count">0</span>)</button>
           <button type="button" class="btn-filter" data-filter="退回">已退回 (<span id="filter-rejected-count">0</span>)</button>
         </div>
-        <button type="button" class="btn-refresh" id="btn-refresh">🔄 重新整理名單</button>
+        <div class="tool-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn-refresh" id="btn-refresh">🔄 重新整理</button>
+          <button type="button" class="btn-refresh" id="btn-test-sample" style="color: #2E7D32; border-color: #A5D6A7; background: #E8F5E9;">🧪 建立測試案件</button>
+          <button type="button" class="btn-refresh" id="btn-config-gas" style="color: #0284C7; border-color: #BAE6FD; background: #F0F9FF;">🌐 雲端 API 設定</button>
+          <button type="button" class="btn-refresh" id="btn-clear-all" style="color: #DC2626; border-color: #FECACA; background: #FEF2F2;">🗑️ 清空所有案件</button>
+        </div>
       </div>
 
       <!-- 卡片清單網格 -->
@@ -91,6 +96,6 @@
     </div>
   </div>
 
-  <script src="admin.js?v=20260831v7"></script>
+  <script src="admin.js?v=20260831v8"></script>
 </body>
 </html>

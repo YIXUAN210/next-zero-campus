@@ -1,26 +1,155 @@
 /**
- * NEXT ZERO 校園永續拼圖 - 前端互動與直傳核心邏輯
- * 支援雙模架構：本地 LocalStorage 持久化引擎 (含智慧圖片壓縮) + Google Apps Script 雲端同步
+ * NEXT ZERO 校園永續拼圖 - 前端互動與直傳核心邏輯 (v8 旗艦穩定版)
+ * 整合 IndexedDB + LocalStorage 雙核心持久化引擎 + Google Apps Script 雲端雙向同步
  */
 
-// Google Apps Script Web App URL（選填，若未填寫則自動啟用本地 LocalStorage 實時持久化引擎）
-const GAS_API_URL = ""; 
-
-const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
+// 預設 Google Apps Script Web App URL（亦可由後台介面動態設定）
+const DEFAULT_GAS_API_URL = ""; 
 const TOTAL_TILES = 9; // 3x3 網格共 9 塊
+const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
+const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
+const DB_NAME = "NextZeroCampusDB";
+const STORE_NAME = "submissions";
+
 let currentBase64Image = null;
 let currentImageName = "";
 
+/**
+ * 取得當前生效的 GAS API URL
+ */
+function getActiveGasUrl() {
+  return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+}
+
+/**
+ * ==========================================================================
+ * EcoDB: 瀏覽器 IndexedDB + LocalStorage 雙層無上限儲存引擎
+ * ==========================================================================
+ */
+const EcoDB = {
+  // 開啟 IndexedDB
+  open() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        resolve(null);
+        return;
+      }
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: "rowId" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+    });
+  },
+
+  // 取得所有案件
+  async getAll() {
+    // 優先讀取 IndexedDB
+    try {
+      const db = await this.open();
+      if (db) {
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readonly");
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const list = req.result || [];
+            // 若 IndexedDB 有資料，同步至 LocalStorage
+            if (list.length > 0) {
+              this.syncToLocalStorage(list);
+              resolve(list.sort((a, b) => b.rowId - a.rowId));
+              return;
+            }
+            // 若 IndexedDB 為空，回退讀取 LocalStorage
+            resolve(this.getFromLocalStorage());
+          };
+          req.onerror = () => resolve(this.getFromLocalStorage());
+        });
+      }
+    } catch (e) {
+      console.warn("IndexedDB 讀取異常，回退至 LocalStorage:", e);
+    }
+    return this.getFromLocalStorage();
+  },
+
+  // 從 LocalStorage 讀取
+  getFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  // 同步輕量摘要至 LocalStorage (供即時跨分頁事件監聽)
+  syncToLocalStorage(list) {
+    try {
+      // 為避免 LocalStorage 5MB 限制，照片超過 100KB 時以縮圖字串快取
+      const lightList = list.map(item => ({
+        rowId: item.rowId,
+        timestamp: item.timestamp,
+        nickname: item.nickname,
+        taskType: item.taskType,
+        status: item.status,
+        photoUrl: item.photoUrl && item.photoUrl.length > 200000 ? "puzzle.svg" : item.photoUrl,
+        imageName: item.imageName
+      }));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lightList));
+    } catch (e) {
+      console.warn("LocalStorage 同步快取警示:", e);
+    }
+  },
+
+  // 新增案件
+  async add(item) {
+    // 寫入 IndexedDB
+    try {
+      const db = await this.open();
+      if (db) {
+        await new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.put(item);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
+      }
+    } catch (e) {
+      console.warn("IndexedDB 寫入異常:", e);
+    }
+
+    // 寫入 LocalStorage
+    let localList = this.getFromLocalStorage();
+    localList.unshift(item);
+    this.syncToLocalStorage(localList);
+
+    // 發送廣播事件
+    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+  }
+};
+
+/**
+ * DOM 載入初始化
+ */
 document.addEventListener('DOMContentLoaded', () => {
   initGrid();
   loadProgressData();
   setupUploadModal();
 
-  // 跨分頁即時監聽：當後台審核通過時，前台自動即時更新拼圖與數據
+  // 跨分頁與同分頁實時監聽
   window.addEventListener('storage', (e) => {
     if (e.key === LOCAL_STORAGE_KEY) {
       loadProgressData();
     }
+  });
+  window.addEventListener('eco-data-changed', loadProgressData);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadProgressData();
   });
 });
 
@@ -41,10 +170,10 @@ function initGrid() {
 }
 
 /**
- * 智慧相片壓縮函數（將高畫質大圖自動壓縮至 800px 輕量化 JPEG，徹底解決 LocalStorage 容量上限問題）
+ * 智慧相片壓縮函數（將高畫質大圖自動壓縮至 800px 輕量化 JPEG）
  */
-function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.72) {
-  return new Promise((resolve, reject) => {
+function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.75) {
+  return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -73,10 +202,13 @@ function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.72) {
         const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
         resolve(compressedBase64);
       };
-      img.onerror = (err) => reject(err);
+      img.onerror = () => {
+        // 若圖片無法被 canvas 解碼 (如特殊格式)，直接回傳原始 Base64
+        resolve(e.target.result);
+      };
       img.src = e.target.result;
     };
-    reader.onerror = (err) => reject(err);
+    reader.onerror = () => resolve("puzzle.svg");
     reader.readAsDataURL(file);
   });
 }
@@ -117,20 +249,18 @@ function setupUploadModal() {
 
       currentImageName = file.name;
       try {
-        // 執行自動壓縮
         currentBase64Image = await compressImage(file);
         if (previewImg && previewContainer) {
           previewImg.src = currentBase64Image;
           previewContainer.style.display = 'block';
         }
       } catch (err) {
-        console.error("相片讀取或壓縮失敗:", err);
-        alert("⚠️ 相片讀取失敗，請重新選取照片！");
+        console.error("相片讀取失敗:", err);
       }
     });
   }
 
-  // 表單送出處理（實時儲存真實案件）
+  // 表單送出處理
   if (uploadForm) {
     uploadForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -147,7 +277,7 @@ function setupUploadModal() {
 
       // 進入上傳中狀態
       if (btnSubmit) btnSubmit.disabled = true;
-      if (submitText) submitText.innerText = "處理中...";
+      if (submitText) submitText.innerText = "正在儲存案件...";
       if (submitSpinner) submitSpinner.style.display = "inline-block";
 
       const now = new Date();
@@ -156,43 +286,21 @@ function setupUploadModal() {
       const newSubmission = {
         rowId: Date.now(),
         timestamp: timeStr,
-        nickname: nickname,
+        nickname: nickname || "熱心同學",
         taskType: taskType,
         photoUrl: currentBase64Image,
-        imageName: currentImageName,
+        imageName: currentImageName || "photo.jpg",
         status: "待審核"
       };
 
-      // 1. 寫入本地持久化引擎 (LocalStorage)
-      let saveSuccess = false;
-      try {
-        let storedList = [];
-        try {
-          storedList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
-        } catch (parseErr) {
-          storedList = [];
-        }
-        storedList.unshift(newSubmission);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedList));
-        saveSuccess = true;
-      } catch (storageErr) {
-        console.warn("LocalStorage 儲存警示 (嘗試二次超壓縮):", storageErr);
-        // 若空間不足，嘗試以極致低佔用方式儲存
-        try {
-          let storedList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
-          newSubmission.photoUrl = "puzzle.svg"; // 降級為預設圖示保留文字紀錄
-          storedList.unshift(newSubmission);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedList));
-          saveSuccess = true;
-        } catch (fatalErr) {
-          console.error("無法寫入儲存空間:", fatalErr);
-        }
-      }
+      // 1. 寫入本地雙核心儲存庫 (IndexedDB + LocalStorage)
+      await EcoDB.add(newSubmission);
 
-      // 2. 若有設定 Google Apps Script API，同步寫入雲端試算表與 Drive
-      if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
+      // 2. 若有設定 Google Apps Script API，同步寫入雲端
+      const gasUrl = getActiveGasUrl();
+      if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
         try {
-          await fetch(GAS_API_URL, {
+          await fetch(gasUrl, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({
@@ -213,13 +321,9 @@ function setupUploadModal() {
       if (submitText) submitText.innerText = "確認送出";
       if (submitSpinner) submitSpinner.style.display = "none";
       
-      if (saveSuccess) {
-        alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 狀態：【待審核】\n\n提示：請至管理後台點選「通過」審核，前台即會立即點亮拼圖並累計減碳數據！`);
-        closeModal();
-        loadProgressData();
-      } else {
-        alert("⚠️ 儲存發生異常，請重試！");
-      }
+      alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 當前狀態：【待審核】\n\n提示：請至管理後台點選「通過」審核，前台即會立即點亮拼圖並累計減碳數據！`);
+      closeModal();
+      loadProgressData();
     });
   }
 }
@@ -228,14 +332,12 @@ function setupUploadModal() {
  * 載入審核進度與數據計算
  */
 async function loadProgressData() {
-  const progressText = document.getElementById('progress-text');
-  const progressPercent = document.getElementById('progress-percent');
-  const progressBar = document.getElementById('progress-bar-fill');
+  const gasUrl = getActiveGasUrl();
 
-  // 若有部署 GAS API，優先嘗試向雲端拉取最新統計
-  if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
+  // 情況 1：若有部署 GAS 雲端 API，優先向雲端拉取
+  if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
     try {
-      const response = await fetch(GAS_API_URL);
+      const response = await fetch(gasUrl);
       if (response.ok) {
         const data = await response.json();
         if (data.status === "success") {
@@ -244,18 +346,12 @@ async function loadProgressData() {
         }
       }
     } catch (err) {
-      console.warn("GAS 連線暫時離線，自動回退至本地計算引擎:", err);
+      console.warn("GAS 雲端暫時離線，自動由本地雙核心引擎計算:", err);
     }
   }
 
-  // 本地計算引擎 (依據 LocalStorage 中真實通過之案件進行實質統計)
-  let storedList = [];
-  try {
-    storedList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
-  } catch (e) {
-    storedList = [];
-  }
-
+  // 情況 2：從 EcoDB 讀取真實通過之案件
+  const storedList = await EcoDB.getAll();
   const approvedList = storedList.filter(item => item.status === "通過");
   
   let task1 = 0, task2 = 0, task3 = 0, task4 = 0, task5 = 0;
@@ -274,7 +370,7 @@ async function loadProgressData() {
     }
   });
 
-  // 精準加權減碳與省電公式換算 (5大任務係數)
+  // 5 大任務公式換算
   const savedKWh = (task1 * 1.0 + task2 * 0.2 + task3 * 0.3 + task4 * 0.1 + task5 * 0.4).toFixed(1);
   const savedCarbonKG = (task1 * 0.495 + task2 * 0.099 + task3 * 0.149 + task4 * 0.150 + task5 * 0.198).toFixed(2);
 
