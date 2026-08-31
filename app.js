@@ -5,7 +5,7 @@
 // 請將此變數替換為您部署的 Google Apps Script Web App URL
 const GAS_API_URL = ""; 
 
-const TOTAL_TILES = 16;
+const TOTAL_TILES = 9; // 3x3 網格共 9 塊
 let currentBase64Image = null;
 let currentImageName = "";
 
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * 初始化 4x4 拼圖網格 DOM
+ * 初始化 3x3 拼圖網格 DOM
  */
 function initGrid() {
   const grid = document.getElementById('grid');
@@ -153,13 +153,13 @@ async function loadProgressData() {
   const progressBar = document.getElementById('progress-bar-fill');
 
   if (!GAS_API_URL || GAS_API_URL === "YOUR_GAS_WEB_APP_URL") {
-    console.info("💡 目前處於展示模式 (Demo Mode)。請在 app.js 中設定您的 GAS_API_URL。");
-    const mockData = {
-      totalApproved: 10,
-      savedKWh: 24.5,
-      savedCarbonKG: 12.13
+    console.info("💡 尚未設定 GAS_API_URL，預設全遮罩 (0 塊解鎖)。請在 app.js 設定 GAS_API_URL 以即時連動後端審核。");
+    const initialData = {
+      totalApproved: 0,
+      savedKWh: 0.0,
+      savedCarbonKG: 0.00
     };
-    renderData(mockData, true);
+    renderData(initialData, false);
     return;
   }
 
@@ -170,14 +170,14 @@ async function loadProgressData() {
     if (data.status === "error") throw new Error(data.message || "後端回傳錯誤");
     renderData(data, false);
   } catch (error) {
-    console.warn("⚠️ API 串接暫時離線，自動切換至展示模式:", error);
-    if (progressText) progressText.innerText = "展示模式 (API 離線)";
+    console.warn("⚠️ API 串接暫時離線，保持預設遮罩狀態:", error);
+    if (progressText) progressText.innerText = "等待後端審核連線中...";
     const fallbackData = {
-      totalApproved: 6,
-      savedKWh: 14.0,
-      savedCarbonKG: 6.93
+      totalApproved: 0,
+      savedKWh: 0.0,
+      savedCarbonKG: 0.00
     };
-    renderData(fallbackData, true);
+    renderData(fallbackData, false);
   }
 }
 
@@ -200,18 +200,27 @@ function renderData(data, isDemo = false) {
   const percentage = Math.round((unlockCount / TOTAL_TILES) * 100);
 
   if (progressText) {
-    progressText.innerText = `${isDemo ? '[展示] ' : ''}已解鎖 ${unlockCount} / ${TOTAL_TILES} 塊 (${percentage}%)`;
+    progressText.innerText = `已解鎖 ${unlockCount} / ${TOTAL_TILES} 塊 (${percentage}%)`;
   }
   if (progressBar) {
     progressBar.style.width = `${percentage}%`;
   }
 
+  // 先清空所有已解鎖狀態（確保未審核通過前全部遮蔽）
+  for (let i = 0; i < TOTAL_TILES; i++) {
+    const tile = document.getElementById(`tile-${i}`);
+    if (tile) {
+      tile.classList.remove('unlocked');
+    }
+  }
+
+  // 僅針對審核通過之數量依序點亮
   for (let i = 0; i < unlockCount; i++) {
     const tile = document.getElementById(`tile-${i}`);
     if (tile) {
       setTimeout(() => {
         tile.classList.add('unlocked');
-      }, i * 60);
+      }, i * 70);
     }
   }
 }
