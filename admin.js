@@ -1,10 +1,12 @@
 /**
- * NEXT ZERO 管理審核後台 - 前端邏輯
+ * NEXT ZERO 管理審核後台 - 真實審核與動態計算邏輯
+ * 零假資料：所有待審核與已審核案件均來自使用者真實上傳！
  */
 
-// 請替換為您部署的 Google Apps Script Web App URL
+// Google Apps Script Web App URL（選填，若未填寫則自動啟用本地 LocalStorage 實時持久化引擎）
 const GAS_API_URL = ""; 
 
+const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 let currentToken = "";
 let allSubmissions = [];
 let currentFilter = "all";
@@ -82,119 +84,91 @@ function setupToolbar() {
 }
 
 /**
- * 向後端取得所有任務上傳列表
+ * 載入所有真實任務上傳案件（完全排除假資料）
  */
 async function fetchSubmissions() {
   const grid = document.getElementById('submissions-grid');
-  grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">載入審核名單中...</p>';
+  grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #537562; padding: 40px; font-weight: 600;">🔄 正在載入真實審核名單中...</p>';
 
-  // 若未填寫 GAS URL，載入模擬測試資料
-  if (!GAS_API_URL || GAS_API_URL === "YOUR_GAS_WEB_APP_URL") {
-    console.info("💡 管理後台處於展示模式 (Demo Mode)。");
-    allSubmissions = [
-      {
-        rowId: 2,
-        timestamp: "2026/08/29 11:15:20",
-        nickname: "電機三甲 黃同學",
-        taskType: "任務 1. 教室空調設置成 26 度並隨手關閉電源",
-        photoUrl: "puzzle.svg",
-        status: "待審核"
-      },
-      {
-        rowId: 3,
-        timestamp: "2026/08/29 11:30:45",
-        nickname: "資工二乙 林同學",
-        taskType: "任務 2. 短程爬梯代替搭電梯",
-        photoUrl: "puzzle.svg",
-        status: "通過"
-      },
-      {
-        rowId: 4,
-        timestamp: "2026/08/29 11:42:10",
-        nickname: "電子四甲 趙同學",
-        taskType: "任務 3. 出門時拔除待機的電力",
-        photoUrl: "puzzle.svg",
-        status: "待審核"
-      },
-      {
-        rowId: 5,
-        timestamp: "2026/08/29 12:05:33",
-        nickname: "企管一丙 王同學",
-        taskType: "任務 4. 自備環保容器與環保杯",
-        photoUrl: "puzzle.svg",
-        status: "通過"
-      },
-      {
-        rowId: 6,
-        timestamp: "2026/08/29 12:20:18",
-        nickname: "資訊傳播三 陳同學",
-        taskType: "任務 5. 數位節能與設備休眠",
-        photoUrl: "puzzle.svg",
-        status: "待審核"
+  // 情況 1：若有設定 GAS 雲端 API，向 Google 試算表拉取資料
+  if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
+    try {
+      const url = `${GAS_API_URL}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.status === "success") {
+        allSubmissions = data.submissions || [];
+        updateCounts();
+        renderSubmissions();
+        return;
+      } else {
+        alert("❌ " + (data.message || "驗證失敗或讀取錯誤"));
       }
-    ];
-    updateCounts();
-    renderSubmissions();
-    return;
-  }
-
-  try {
-    const url = `${GAS_API_URL}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.status === "success") {
-      allSubmissions = data.submissions || [];
-      updateCounts();
-      renderSubmissions();
-    } else {
-      alert("❌ " + (data.message || "驗證失敗或讀取錯誤"));
+    } catch (err) {
+      console.warn("GAS 雲端拉取失敗，自動讀取本地儲存庫:", err);
     }
-  } catch (err) {
-    console.error("載入失敗:", err);
-    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #dc2626; padding: 40px;">連線失敗，請檢查 API 網址或網路！</p>';
   }
+
+  // 情況 2：讀取本地儲存庫中的真實上傳案件
+  try {
+    const rawData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    allSubmissions = rawData ? JSON.parse(rawData) : [];
+  } catch (e) {
+    allSubmissions = [];
+  }
+
+  updateCounts();
+  renderSubmissions();
 }
 
 /**
- * 更新統計數字
+ * 更新統計數字看板
  */
 function updateCounts() {
   const pending = allSubmissions.filter(s => s.status === "待審核").length;
   const approved = allSubmissions.filter(s => s.status === "通過").length;
   const rejected = allSubmissions.filter(s => s.status === "退回").length;
 
-  document.getElementById('count-pending').innerText = pending;
-  document.getElementById('count-approved').innerText = approved;
-  document.getElementById('count-rejected').innerText = rejected;
+  const countPendingEl = document.getElementById('count-pending');
+  const countApprovedEl = document.getElementById('count-approved');
+  const countRejectedEl = document.getElementById('count-rejected');
 
-  document.getElementById('filter-all-count').innerText = allSubmissions.length;
-  document.getElementById('filter-pending-count').innerText = pending;
-  document.getElementById('filter-approved-count').innerText = approved;
-  document.getElementById('filter-rejected-count').innerText = rejected;
+  if (countPendingEl) countPendingEl.innerText = pending;
+  if (countApprovedEl) countApprovedEl.innerText = approved;
+  if (countRejectedEl) countRejectedEl.innerText = rejected;
+
+  const fAll = document.getElementById('filter-all-count');
+  const fPending = document.getElementById('filter-pending-count');
+  const fApproved = document.getElementById('filter-approved-count');
+  const fRejected = document.getElementById('filter-rejected-count');
+
+  if (fAll) fAll.innerText = allSubmissions.length;
+  if (fPending) fPending.innerText = pending;
+  if (fApproved) fApproved.innerText = approved;
+  if (fRejected) fRejected.innerText = rejected;
 }
 
-/**
- * 渲染卡片清單
- */
 /**
  * 解析媒體網址：將 Google Drive 網址轉換為直接可嵌入 <img> 的縮圖網址
  */
 function getMediaEmbedUrl(url) {
   if (!url || url === "無照片佐證") return "puzzle.svg";
 
+  // 若為 Base64 直接回傳
+  if (url.startsWith("data:image")) return url;
+
   // 解析 Google Drive 檔案 ID
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
     const fileId = match[1];
-    // Google Drive 高畫質縮圖端點
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
   }
   return url;
 }
 
 /**
- * 渲染卡片清單
+ * 渲染卡片清單（真實上傳紀錄）
  */
 function renderSubmissions() {
   const grid = document.getElementById('submissions-grid');
@@ -206,7 +180,18 @@ function renderSubmissions() {
   });
 
   if (filtered.length === 0) {
-    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">目前無符合條件的任務紀錄</p>';
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 50px 20px; background: #FFFFFF; border-radius: 16px; border: 1.5px dashed #C8E6C9;">
+        <span style="font-size: 40px; display: block; margin-bottom: 12px;">📭</span>
+        <h3 style="font-size: 17px; color: #193828; margin-bottom: 6px; font-weight: 700;">目前尚無任何案件紀錄</h3>
+        <p style="font-size: 13px; color: #537562; max-width: 420px; margin: 0 auto 16px auto;">
+          本系統不包含任何預設假資料。請先至前台首頁填寫表單並上傳照片，送出後的真實案件將即時顯示於此處！
+        </p>
+        <a href="index.html" style="display: inline-block; background: #2E7D32; color: #FFFFFF; text-decoration: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 700;">
+          ⬅️ 前往首頁上傳任務
+        </a>
+      </div>
+    `;
     return;
   }
 
@@ -214,27 +199,27 @@ function renderSubmissions() {
     const card = document.createElement('div');
     card.className = 'sub-card';
     const embedImgUrl = getMediaEmbedUrl(item.photoUrl);
-    const hasValidDriveLink = item.photoUrl && item.photoUrl.indexOf("http") !== -1;
+    const isDriveLink = item.photoUrl && item.photoUrl.startsWith("http");
 
     card.innerHTML = `
       <div class="sub-img-box" onclick="showPhoto('${embedImgUrl}', '${item.photoUrl}')">
         <img src="${embedImgUrl}" alt="佐證照片" loading="lazy" onerror="this.onerror=null; this.src='puzzle.svg';">
         <span class="sub-badge badge-${item.status}">${item.status}</span>
-        <div class="img-hint-overlay">🔍 點擊查看大圖 / 影片</div>
+        <div class="img-hint-overlay">🔍 點擊檢視佐證大圖</div>
       </div>
       <div class="sub-body">
-        <div class="sub-title">${escapeHtml(item.nickname)}</div>
-        <div class="sub-task">📋 ${escapeHtml(item.taskType)}</div>
-        <div class="sub-time">🕒 ${escapeHtml(String(item.timestamp))}</div>
-        ${hasValidDriveLink ? `
+        <div class="sub-title">👤 ${escapeHtml(item.nickname || '未填寫暱稱')}</div>
+        <div class="sub-task">📋 ${escapeHtml(item.taskType || '')}</div>
+        <div class="sub-time">🕒 提交時間：${escapeHtml(String(item.timestamp || ''))}</div>
+        ${isDriveLink ? `
           <a href="${item.photoUrl}" target="_blank" rel="noopener noreferrer" class="link-drive-file" onclick="event.stopPropagation()">
-            🔗 在雲端開啟原檔 / 影片
+            🔗 在 Google 雲端開啟原檔
           </a>
         ` : ''}
       </div>
       <div class="sub-actions">
-        <button type="button" class="btn-approve" onclick="auditTask(${item.rowId}, '通過')">✅ 通過</button>
-        <button type="button" class="btn-reject" onclick="auditTask(${item.rowId}, '退回')">❌ 退回</button>
+        <button type="button" class="btn-approve" onclick="auditTask(${item.rowId}, '通過')">✅ 通過審核</button>
+        <button type="button" class="btn-reject" onclick="auditTask(${item.rowId}, '退回')">❌ 退回案件</button>
       </div>
     `;
     grid.appendChild(card);
@@ -242,47 +227,44 @@ function renderSubmissions() {
 }
 
 /**
- * 執行審核動作 (通過 / 退回)
+ * 執行審核動作 (通過 / 退回) - 實時連動更新
  */
 async function auditTask(rowId, status) {
   if (!confirm(`確定要將此筆任務設定為「${status}」嗎？`)) return;
 
-  // 展示模式本地更新
-  if (!GAS_API_URL || GAS_API_URL === "YOUR_GAS_WEB_APP_URL") {
-    const target = allSubmissions.find(s => s.rowId === rowId);
-    if (target) {
-      target.status = status;
-      updateCounts();
-      renderSubmissions();
+  // 1. 本地儲存庫實時更新
+  const target = allSubmissions.find(s => s.rowId === rowId);
+  if (target) {
+    target.status = status;
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(allSubmissions));
+    } catch (e) {
+      console.warn("LocalStorage 寫入異常:", e);
     }
-    return;
   }
 
-  try {
-    const res = await fetch(GAS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: "audit_task",
-        token: currentToken,
-        rowId: rowId,
-        status: status
-      })
-    });
-    const result = await res.json();
-    if (result.status === "success") {
-      // 更新本地資料狀態
-      const target = allSubmissions.find(s => s.rowId === rowId);
-      if (target) target.status = status;
-      updateCounts();
-      renderSubmissions();
-    } else {
-      alert("❌ 審核失敗：" + (result.message || "未知錯誤"));
+  // 2. 若有設定 GAS 雲端 API，同步更新雲端試算表
+  if (GAS_API_URL && GAS_API_URL !== "YOUR_GAS_WEB_APP_URL") {
+    try {
+      await fetch(GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "audit_task",
+          token: currentToken,
+          rowId: rowId,
+          status: status
+        })
+      });
+    } catch (err) {
+      console.warn("GAS 雲端審核同步異常:", err);
     }
-  } catch (err) {
-    console.error("審核操作異常:", err);
-    alert("❌ 網路請求失敗，請稍候重試！");
   }
+
+  updateCounts();
+  renderSubmissions();
+  
+  alert(`✅ 審核完成！已將此任務標記為「${status}」。\n${status === '通過' ? '前台首頁將即時點亮拼圖並累計減碳數據！' : '該案件已被退回。'}`);
 }
 
 /**
@@ -307,8 +289,9 @@ function showPhoto(embedUrl, originalUrl) {
   if (modal && modalImg) {
     modalImg.src = embedUrl;
     if (driveLink) {
-      driveLink.href = originalUrl || embedUrl;
-      driveLink.style.display = (originalUrl && originalUrl.indexOf("http") !== -1) ? 'inline-block' : 'none';
+      const isDriveLink = originalUrl && originalUrl.startsWith("http");
+      driveLink.href = isDriveLink ? originalUrl : embedUrl;
+      driveLink.style.display = isDriveLink ? 'inline-block' : 'none';
     }
     modal.classList.add('active');
   }
