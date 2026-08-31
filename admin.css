@@ -1,22 +1,24 @@
 :root {
-  --primary-color: #2e7d32;
-  --primary-hover: #1b5e20;
-  --bg-color: #f3f4f6;
+  --primary-color: #2E7D32;
+  --primary-hover: #1B5E20;
+  --leaf-green: #68BC44;
+  --bg-color: #F5FBF6;
   --card-bg: #ffffff;
-  --text-main: #111827;
-  --text-muted: #6b7280;
+  --text-main: #193828;
+  --text-muted: #537562;
   --color-pending: #d97706;
   --color-approved: #15803d;
   --color-rejected: #b91c1c;
-  --border-radius: 12px;
+  --border-radius: 16px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Noto Sans TC', sans-serif;
-  background-color: var(--bg-color);
+  font-family: 'Noto Sans TC', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg, #F6FAF7 0%, #EDF7EE 100%);
   color: var(--text-main);
   line-height: 1.5;
+  min-height: 100vh;
 }
 
 .admin-nav {

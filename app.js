@@ -199,8 +199,13 @@ function renderData(data, isDemo = false) {
   const unlockCount = Math.min(approved, TOTAL_TILES);
   const percentage = Math.round((unlockCount / TOTAL_TILES) * 100);
 
+  const progressPercent = document.getElementById('progress-percent');
+
   if (progressText) {
     progressText.innerText = `已解鎖 ${unlockCount} / ${TOTAL_TILES} 塊 (${percentage}%)`;
+  }
+  if (progressPercent) {
+    progressPercent.innerText = `${percentage}%`;
   }
   if (progressBar) {
     progressBar.style.width = `${percentage}%`;

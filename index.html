@@ -3,118 +3,191 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEXT ZERO 校園永續拼圖解鎖計畫</title>
-  <link rel="stylesheet" href="style.css?v=20260831v1">
+  <title>NEXT ZERO 校園永續拼圖 ｜ 綠色校園·永續未來</title>
+  <link rel="stylesheet" href="style.css?v=20260831v3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-  <header class="header">
-    <div class="header-badge">🌱 NEXT ZERO 校園行動提案</div>
-    <h1>校園永續社區拼圖</h1>
-    <p class="subtitle">完成日常減碳任務，合力解鎖全校綠色未來畫卷</p>
-  </header>
+  <!-- 頂部品牌導航列 (Brand Navigation) -->
+  <nav class="top-nav">
+    <div class="nav-brand">
+      <span class="brand-logo">🌿</span>
+      <div class="brand-text-group">
+        <span class="brand-title">NEXT ZERO</span>
+        <span class="brand-tagline">GREEN TODAY · BETTER TOMORROW</span>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a href="admin.html" class="nav-admin-btn">⚙️ 管理審核後台</a>
+    </div>
+  </nav>
+
+  <div class="eco-bg-decorations">
+    <div class="leaf-decor leaf-1">🍃</div>
+    <div class="leaf-decor leaf-2">🌱</div>
+    <div class="leaf-decor leaf-3">🌿</div>
+  </div>
 
   <main class="container">
-    <!-- 行動呼籲：開啟直傳彈窗 -->
-    <section class="card action-section">
-      <button type="button" class="btn-primary" id="btn-open-modal">
-        <span class="icon">📸</span> 點我上傳節能任務佐證
-      </button>
-      <p class="hint">免跳轉頁面，拍照直接上傳，審核通過即點亮拼圖！</p>
-    </section>
+    <!-- 主視覺 Hero 區塊 (Hero Header) -->
+    <header class="hero-section">
+      <div class="hero-badge">
+        <span>🌱 NEXT ZERO · 永續校園行動</span>
+      </div>
+      <h1 class="hero-title">
+        從校園開始<br>
+        <span class="text-highlight">讓永續成為日常</span>
+      </h1>
+      <div class="hero-tags">
+        <span class="hero-tag">節能</span>
+        <span class="tag-divider">✕</span>
+        <span class="hero-tag">減碳</span>
+        <span class="tag-divider">✕</span>
+        <span class="hero-tag">綠色未來</span>
+      </div>
+      <p class="hero-subtitle">每一個微小行動，都是改變全校與地球的永續力量。</p>
+      
+      <div class="hero-action-box">
+        <button type="button" class="btn-hero-participate" id="btn-open-modal">
+          <span class="btn-icon">📸</span> 立即上傳節能佐證 <span class="btn-arrow">→</span>
+        </button>
+        <div class="hero-note-badge">
+          ✨ <span>Small Actions · Big Changes</span>
+        </div>
+      </div>
+    </header>
 
-    <!-- 核心拼圖互動區塊 -->
-    <section class="card puzzle-wrapper">
-      <div class="puzzle-header">
-        <h2>全校解鎖進度</h2>
-        <span class="badge-progress" id="progress-text">載入中...</span>
+    <!-- 核心拼圖互動區塊 (Puzzle Section) -->
+    <section class="card puzzle-card">
+      <div class="puzzle-card-header">
+        <div class="header-left">
+          <span class="section-icon">🧩</span>
+          <div>
+            <h2>校園永續綠能拼圖</h2>
+            <p class="section-desc">拍照上傳審核通過，合力點亮全校綠色未來畫卷</p>
+          </div>
+        </div>
+        <div class="progress-pill" id="progress-text">
+          載入進度中...
+        </div>
       </div>
       
       <div id="puzzle-container">
         <div id="grid"></div>
       </div>
-      <div class="progress-bar-container">
-        <div class="progress-bar" id="progress-bar-fill" style="width: 0%;"></div>
+
+      <div class="progress-wrapper">
+        <div class="progress-info">
+          <span>解鎖完成度</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar-fill" style="width: 0%;"></div>
+        </div>
       </div>
     </section>
 
-    <!-- 實體減碳數據儀表板 -->
-    <section class="stats-grid">
-      <div class="stat-card">
-        <span class="stat-icon">🧩</span>
+    <!-- 實體減碳數據儀表板 (Stats Grid) -->
+    <section class="stats-section">
+      <div class="stat-card stat-puzzle">
+        <div class="stat-icon-wrapper">
+          <span class="stat-icon">🧩</span>
+        </div>
         <div class="stat-info">
           <h3 id="approved-count">0</h3>
           <p>已解鎖板塊 / 9</p>
+          <span class="stat-sub">全校合力拼圖</span>
         </div>
       </div>
 
-      <div class="stat-card">
-        <span class="stat-icon">⚡</span>
+      <div class="stat-card stat-energy">
+        <div class="stat-icon-wrapper">
+          <span class="stat-icon">⚡</span>
+        </div>
         <div class="stat-info">
           <h3 id="saved-kwh">0</h3>
-          <p>預估省電 (度)</p>
+          <p>累積預估省電 (度)</p>
+          <span class="stat-sub">降低尖峰耗電</span>
         </div>
       </div>
 
-      <div class="stat-card">
-        <span class="stat-icon">🌿</span>
+      <div class="stat-card stat-carbon">
+        <div class="stat-icon-wrapper">
+          <span class="stat-icon">🌿</span>
+        </div>
         <div class="stat-info">
           <h3 id="saved-carbon">0</h3>
-          <p>預估減碳 (kg CO₂e)</p>
+          <p>累積預估減碳 (kg CO₂e)</p>
+          <span class="stat-sub">換算溫室氣體抵減</span>
         </div>
       </div>
     </section>
 
-    <!-- 五大減碳解鎖任務指引 -->
-    <section class="card tasks-guide">
-      <h2>📋 五大減碳解鎖任務與執行方式</h2>
-      <div class="task-list">
+    <!-- 五大減碳解鎖任務指引 (5 Eco Tasks Grid) -->
+    <section class="card tasks-section">
+      <div class="section-heading">
+        <span class="section-badge">ACT NOW</span>
+        <h2>📋 五大校園減碳任務與執行指引</h2>
+        <p class="section-desc">選擇您日常完成的節能行動，拍照佐證上傳即可點亮拼圖！</p>
+      </div>
+
+      <div class="tasks-grid">
         <!-- 任務 1 -->
-        <div class="task-item">
-          <span class="task-tag tag-1">任務 1</span>
-          <div class="task-desc">
-            <strong>教室空調設置成 26 度並隨手關閉電源：</strong>
-            教室冷氣空調調設為 26–28°C 搭配風扇，離開無人教室時隨手關閉空調與照明設備。
+        <div class="task-box task-theme-1">
+          <div class="task-box-top">
+            <div class="task-icon-circle">❄️</div>
+            <span class="task-badge badge-1">任務 1</span>
           </div>
+          <h3 class="task-title">教室空調 26°C · 隨手關電</h3>
+          <p class="task-content">冷氣調設為 26–28°C 搭配循環扇；無人教室隨手關閉冷氣、照明與投影機。</p>
+          <div class="task-benefit">💡 每次省電約 1.0 度 ｜ 減碳 0.495 kg</div>
         </div>
 
         <!-- 任務 2 -->
-        <div class="task-item">
-          <span class="task-tag tag-2">任務 2</span>
-          <div class="task-desc">
-            <strong>短程爬梯代替搭電梯：</strong>
-            校園內 3 層樓以內移動以步行走樓梯替代搭乘電梯，減少電梯頻繁啟動之瞬間高能耗。
+        <div class="task-box task-theme-2">
+          <div class="task-box-top">
+            <div class="task-icon-circle">🪜</div>
+            <span class="task-badge badge-2">任務 2</span>
           </div>
+          <h3 class="task-title">短程爬梯 · 代替搭電梯</h3>
+          <p class="task-content">校內移動 3 層樓以內改走樓梯，減少電梯頻繁啟動瞬間高耗能，健康又減碳。</p>
+          <div class="task-benefit">💡 每次省電約 0.2 度 ｜ 減碳 0.099 kg</div>
         </div>
 
         <!-- 任務 3 -->
-        <div class="task-item">
-          <span class="task-tag tag-3">任務 3</span>
-          <div class="task-desc">
-            <strong>出門時拔除待機的電力：</strong>
-            離開宿舍、實驗室或教室時，隨手關閉延長線總電源或拔除長期閒置電器之待機插頭。
+        <div class="task-box task-theme-3">
+          <div class="task-box-top">
+            <div class="task-icon-circle">🔌</div>
+            <span class="task-badge badge-3">任務 3</span>
           </div>
+          <h3 class="task-title">出門拔除待機電力</h3>
+          <p class="task-content">離開宿舍、研究室或教室時，關閉延長線總電源開關或拔除閒置電器待機插頭。</p>
+          <div class="task-benefit">💡 每次省電約 0.3 度 ｜ 減碳 0.149 kg</div>
         </div>
 
         <!-- 任務 4 -->
-        <div class="task-item">
-          <span class="task-tag tag-4">任務 4</span>
-          <div class="task-desc">
-            <strong>自備環保容器與環保杯：</strong>
-            在校內用餐、外帶餐點或購買飲品時，主動自備環保餐盒、環保餐具與隨身水杯，源頭減塑減碳。
+        <div class="task-box task-theme-4">
+          <div class="task-box-top">
+            <div class="task-icon-circle">🍱</div>
+            <span class="task-badge badge-4">任務 4</span>
           </div>
+          <h3 class="task-title">自備環保容器與杯</h3>
+          <p class="task-content">在校用餐自備環保餐盒與餐具，購買飲品或盛水自備隨身水杯，源頭零廢棄。</p>
+          <div class="task-benefit">💡 每次減塑減碳約 0.150 kg CO₂e</div>
         </div>
 
         <!-- 任務 5 -->
-        <div class="task-item">
-          <span class="task-tag tag-5">任務 5</span>
-          <div class="task-desc">
-            <strong>數位節能與設備休眠：</strong>
-            電腦教室或個人電腦設備短暫離開設定自動休眠、關閉閒置螢幕，並適度調降顯示器亮度。
+        <div class="task-box task-theme-5">
+          <div class="task-box-top">
+            <div class="task-icon-circle">💻</div>
+            <span class="task-badge badge-5">任務 5</span>
           </div>
+          <h3 class="task-title">數位節能 · 設備休眠</h3>
+          <p class="task-content">個人電腦與電腦教室設備短暫離開設定自動休眠、關閉閒置螢幕並調降適度亮度。</p>
+          <div class="task-benefit">💡 每次省電約 0.4 度 ｜ 減碳 0.198 kg</div>
         </div>
       </div>
     </section>
@@ -124,7 +197,10 @@
   <div class="modal-overlay" id="upload-modal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>📸 上傳節能任務佐證</h3>
+        <div class="modal-title-group">
+          <span class="modal-icon">📸</span>
+          <h3>上傳節能任務佐證</h3>
+        </div>
         <button type="button" class="btn-close" id="btn-close-modal">&times;</button>
       </div>
       <form id="upload-form">
@@ -154,7 +230,7 @@
 
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="btn-cancel">取消</button>
-          <button type="submit" class="btn-primary" id="btn-submit">
+          <button type="submit" class="btn-submit-action" id="btn-submit">
             <span id="submit-text">確認送出</span>
             <span class="spinner" id="submit-spinner" style="display: none;"></span>
           </button>
@@ -164,13 +240,12 @@
   </div>
 
   <footer class="footer">
-    <p>NEXT ZERO Campus Sustainability Initiative © 2026</p>
-    <p class="sub-footer">
-      日本參訪交流實踐專案 ｜ 
-      <a href="admin.html" class="admin-link">⚙️ 管理審核後台</a>
-    </p>
+    <div class="footer-content">
+      <p class="footer-title">🌱 NEXT ZERO Campus Sustainability Initiative © 2026</p>
+      <p class="footer-sub">綠色校園·永續未來 ｜ 節能減碳·從你我做起</p>
+    </div>
   </footer>
 
-  <script src="app.js?v=20260831v1"></script>
+  <script src="app.js?v=20260831v3"></script>
 </body>
 </html>

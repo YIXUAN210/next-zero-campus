@@ -1,92 +1,185 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%">
   <defs>
-    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#bbf7d0" />
-      <stop offset="100%" stop-color="#ecfdf5" />
+    <!-- 天空漸層 -->
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E1F5FE" />
+      <stop offset="60%" stop-color="#F1F8E9" />
+      <stop offset="100%" stop-color="#E8F5E9" />
     </linearGradient>
-    <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="100%" stop-color="#fde047" />
+
+    <!-- 陽光光暈漸層 -->
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE082" stop-opacity="1" />
+      <stop offset="50%" stop-color="#FFD54F" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- 遠景山丘漸層 -->
+    <linearGradient id="hillFar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#A5D6A7" />
+      <stop offset="100%" stop-color="#81C784" />
     </linearGradient>
-    <linearGradient id="hill1" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#86efac" />
-      <stop offset="100%" stop-color="#4ade80" />
+
+    <!-- 中景山丘漸層 -->
+    <linearGradient id="hillMid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#81C784" />
+      <stop offset="100%" stop-color="#66BB6A" />
     </linearGradient>
-    <linearGradient id="hill2" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#34d399" />
-      <stop offset="100%" stop-color="#059669" />
+
+    <!-- 前景翠綠山丘漸層 -->
+    <linearGradient id="hillNear" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4CAF50" />
+      <stop offset="100%" stop-color="#2E7D32" />
     </linearGradient>
-    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0284c7" />
-      <stop offset="100%" stop-color="#0369a1" />
+
+    <!-- 校舍屋頂太陽能板漸層 -->
+    <linearGradient id="solarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="50%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <!-- 建築牆面漸層 -->
+    <linearGradient id="buildingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF8E1" />
+      <stop offset="100%" stop-color="#FFE082" />
     </linearGradient>
   </defs>
 
-  <!-- Sky -->
-  <rect width="800" height="600" fill="url(#sky)" />
+  <!-- 1. 背景天空 -->
+  <rect width="1200" height="800" fill="url(#skyGrad)" />
 
-  <!-- Sun -->
-  <circle cx="680" cy="120" r="60" fill="url(#sunGrad)" opacity="0.9" />
+  <!-- 2. 溫暖太陽與光暈 -->
+  <circle cx="950" cy="180" r="140" fill="url(#sunGlow)" />
+  <circle cx="950" cy="180" r="48" fill="#FFCA28" />
 
-  <!-- Distant Hills -->
-  <path d="M0 380 Q 200 280, 450 350 T 800 320 L 800 600 L 0 600 Z" fill="url(#hill1)" />
-  <path d="M0 430 Q 300 360, 600 420 T 800 400 L 800 600 L 0 600 Z" fill="url(#hill2)" opacity="0.85" />
-
-  <!-- Wind Turbines -->
-  <g transform="translate(180, 240)">
-    <rect x="-3" y="0" width="6" height="130" fill="#ffffff" rx="3" />
-    <circle cx="0" cy="0" r="7" fill="#e2e8f0" />
-    <path d="M0 0 L-6 -70 L6 -70 Z" fill="#ffffff" />
-    <path d="M0 0 L60 35 L50 45 Z" fill="#ffffff" />
-    <path d="M0 0 L-60 35 L-50 45 Z" fill="#ffffff" />
+  <!-- 3. 雲朵 -->
+  <g fill="#FFFFFF" opacity="0.85">
+    <!-- 雲 1 -->
+    <path d="M 160 140 q 20 -30 50 -20 q 30 -40 70 -10 q 40 -10 50 30 h -170 z" />
+    <!-- 雲 2 -->
+    <path d="M 520 110 q 25 -25 60 -15 q 35 -30 75 -5 q 30 -5 45 25 h -180 z" />
   </g>
 
-  <g transform="translate(290, 280) scale(0.7)">
-    <rect x="-3" y="0" width="6" height="130" fill="#ffffff" rx="3" />
-    <circle cx="0" cy="0" r="7" fill="#e2e8f0" />
-    <path d="M0 0 L-6 -70 L6 -70 Z" fill="#ffffff" />
-    <path d="M0 0 L60 35 L50 45 Z" fill="#ffffff" />
-    <path d="M0 0 L-60 35 L-50 45 Z" fill="#ffffff" />
+  <!-- 4. 遠景風力發電機 (Wind Turbines) -->
+  <g stroke="#90A4AE" stroke-width="3" fill="#B0BEC5" opacity="0.65">
+    <!-- 風機 1 -->
+    <line x1="220" y1="460" x2="220" y2="240" stroke-width="4" />
+    <circle cx="220" cy="240" r="6" />
+    <line x1="220" y1="240" x2="220" y2="140" stroke-width="3" />
+    <line x1="220" y1="240" x2="135" y2="290" stroke-width="3" />
+    <line x1="220" y1="240" x2="305" y2="290" stroke-width="3" />
+
+    <!-- 風機 2 -->
+    <line x1="330" y1="480" x2="330" y2="290" stroke-width="3" />
+    <circle cx="330" cy="290" r="5" />
+    <line x1="330" y1="290" x2="330" y2="210" stroke-width="2.5" />
+    <line x1="330" y1="290" x2="260" y2="330" stroke-width="2.5" />
+    <line x1="330" y1="290" x2="400" y2="330" stroke-width="2.5" />
+
+    <!-- 風機 3 (右側) -->
+    <line x1="1080" y1="430" x2="1080" y2="260" stroke-width="3" />
+    <circle cx="1080" cy="260" r="5" />
+    <line x1="1080" y1="260" x2="1080" y2="180" stroke-width="2.5" />
+    <line x1="1080" y1="260" x2="1010" y2="300" stroke-width="2.5" />
+    <line x1="1080" y1="260" x2="1150" y2="300" stroke-width="2.5" />
   </g>
 
-  <!-- Sustainable Campus Building -->
-  <rect x="420" y="320" width="260" height="200" fill="#ffffff" rx="8" />
-  <polygon points="400,320 550,230 700,320" fill="#047857" />
-  
-  <!-- Solar Panels on Roof -->
-  <polygon points="440,300 540,245 540,285 440,310" fill="url(#panel)" stroke="#ffffff" stroke-width="1.5" />
-  <polygon points="560,245 660,300 660,310 560,285" fill="url(#panel)" stroke="#ffffff" stroke-width="1.5" />
+  <!-- 5. 遠景與中景波浪山丘 -->
+  <!-- 遠山 -->
+  <path d="M 0 520 Q 300 420 650 490 T 1200 440 L 1200 800 L 0 800 Z" fill="url(#hillFar)" />
+  <!-- 中山 -->
+  <path d="M 0 590 Q 400 470 850 560 T 1200 520 L 1200 800 L 0 800 Z" fill="url(#hillMid)" />
 
-  <!-- Windows -->
-  <rect x="450" y="350" width="40" height="45" fill="#38bdf8" rx="4" />
-  <rect x="530" y="350" width="40" height="45" fill="#38bdf8" rx="4" />
-  <rect x="610" y="350" width="40" height="45" fill="#38bdf8" rx="4" />
-  
-  <rect x="450" y="420" width="40" height="45" fill="#38bdf8" rx="4" />
-  <rect x="610" y="420" width="40" height="45" fill="#38bdf8" rx="4" />
-  
-  <!-- Door -->
-  <rect x="525" y="440" width="50" height="80" fill="#065f46" rx="4" />
-  
-  <!-- Trees & Greenery -->
-  <g transform="translate(100, 460)">
-    <rect x="-6" y="30" width="12" height="60" fill="#78350f" rx="3" />
-    <circle cx="0" cy="10" r="45" fill="#15803d" />
-    <circle cx="-15" cy="-5" r="35" fill="#22c55e" />
-    <circle cx="20" cy="5" r="30" fill="#16a34a" />
+  <!-- 6. 永續綠能校園主建築 (Campus Building) -->
+  <g transform="translate(680, 360)">
+    <!-- 主校舍本體 -->
+    <rect x="60" y="100" width="360" height="240" rx="6" fill="url(#buildingGrad)" stroke="#E0A96D" stroke-width="3" />
+    
+    <!-- 中央鐘樓 (Clock Tower) -->
+    <rect x="190" y="20" width="100" height="180" rx="4" fill="#FFE082" stroke="#E0A96D" stroke-width="3" />
+    <polygon points="190,20 240,-35 290,20" fill="#D35400" />
+    <!-- 鐘面 -->
+    <circle cx="240" cy="65" r="22" fill="#FFFFFF" stroke="#D35400" stroke-width="3" />
+    <line x1="240" y1="65" x2="240" y2="52" stroke="#333" stroke-width="3" stroke-linecap="round" />
+    <line x1="240" y1="65" x2="252" y2="65" stroke="#333" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- 屋頂太陽能光電陣列 (Solar Panels) -->
+    <polygon points="40,100 200,40 200,100" fill="url(#solarGrad)" />
+    <polygon points="280,100 280,40 440,100" fill="url(#solarGrad)" />
+    <!-- 太陽能板網格線 -->
+    <line x1="60" y1="85" x2="180" y2="48" stroke="#93C5FD" stroke-width="1.5" />
+    <line x1="90" y1="95" x2="190" y2="62" stroke="#93C5FD" stroke-width="1.5" />
+    <line x1="300" y1="48" x2="420" y2="85" stroke="#93C5FD" stroke-width="1.5" />
+    <line x1="290" y1="62" x2="390" y2="95" stroke="#93C5FD" stroke-width="1.5" />
+
+    <!-- 教室窗戶矩陣 -->
+    <g fill="#60A5FA" stroke="#FFFFFF" stroke-width="2">
+      <!-- 左翼窗戶 -->
+      <rect x="85" y="125" width="32" height="40" rx="3" />
+      <rect x="135" y="125" width="32" height="40" rx="3" />
+      <rect x="85" y="185" width="32" height="40" rx="3" />
+      <rect x="135" y="185" width="32" height="40" rx="3" />
+      <rect x="85" y="245" width="32" height="40" rx="3" />
+      <rect x="135" y="245" width="32" height="40" rx="3" />
+
+      <!-- 右翼窗戶 -->
+      <rect x="310" y="125" width="32" height="40" rx="3" />
+      <rect x="360" y="125" width="32" height="40" rx="3" />
+      <rect x="310" y="185" width="32" height="40" rx="3" />
+      <rect x="360" y="185" width="32" height="40" rx="3" />
+      <rect x="310" y="245" width="32" height="40" rx="3" />
+      <rect x="360" y="245" width="32" height="40" rx="3" />
+    </g>
+
+    <!-- 正門大廳入口 -->
+    <rect x="215" y="260" width="50" height="80" rx="4" fill="#3E2723" />
+    <polygon points="195,260 240,230 285,260" fill="#2E7D32" />
   </g>
 
-  <g transform="translate(360, 470) scale(0.85)">
-    <rect x="-6" y="30" width="12" height="60" fill="#78350f" rx="3" />
-    <circle cx="0" cy="10" r="45" fill="#15803d" />
-    <circle cx="-15" cy="-5" r="35" fill="#22c55e" />
-    <circle cx="20" cy="5" r="30" fill="#16a34a" />
+  <!-- 7. 前景翠綠曲線山丘與植栽 (Lush Foreground Hills & Trees) -->
+  <path d="M 0 660 Q 320 540 700 640 T 1200 610 L 1200 800 L 0 800 Z" fill="url(#hillNear)" />
+
+  <!-- 8. 綠色樹木與校園植栽 (Trees & Foliage) -->
+  <g>
+    <!-- 左側大樹群 -->
+    <!-- 樹幹 -->
+    <rect x="135" y="580" width="18" height="90" fill="#5D4037" rx="3" />
+    <!-- 樹冠 1 -->
+    <circle cx="144" cy="550" r="55" fill="#2E7D32" />
+    <circle cx="120" cy="565" r="40" fill="#388E3C" />
+    <circle cx="168" cy="560" r="38" fill="#43A047" />
+
+    <!-- 樹木 2 -->
+    <rect x="235" y="600" width="14" height="80" fill="#5D4037" rx="2" />
+    <circle cx="242" cy="580" r="42" fill="#4CAF50" />
+    <circle cx="225" cy="595" r="30" fill="#66BB6A" />
+    <circle cx="260" cy="590" r="28" fill="#388E3C" />
+
+    <!-- 校舍旁的綠樹 -->
+    <rect x="655" y="560" width="12" height="70" fill="#5D4037" rx="2" />
+    <circle cx="661" cy="540" r="36" fill="#2E7D32" />
+    <circle cx="678" cy="550" r="28" fill="#43A047" />
+
+    <rect x="1110" y="580" width="16" height="85" fill="#5D4037" rx="3" />
+    <circle cx="1118" cy="550" r="50" fill="#388E3C" />
+    <circle cx="1090" cy="565" r="36" fill="#4CAF50" />
+    <circle cx="1145" cy="560" r="35" fill="#2E7D32" />
   </g>
 
-  <!-- Foreground Lawn -->
-  <path d="M0 520 Q 400 480, 800 520 L 800 600 L 0 600 Z" fill="#166534" />
+  <!-- 9. 飛舞的綠葉 (Flying Leaves) -->
+  <g fill="#81C784" opacity="0.9">
+    <path d="M 450 320 C 470 300 500 320 490 340 C 470 360 440 340 450 320 Z" transform="rotate(-20 470 330)" />
+    <path d="M 540 280 C 555 265 580 280 575 295 C 560 310 535 295 540 280 Z" transform="rotate(15 560 290)" />
+    <path d="M 380 390 C 395 375 420 390 415 405 C 400 420 375 405 380 390 Z" transform="rotate(-35 400 400)" />
+    <path d="M 620 230 C 632 218 650 230 645 242 C 635 252 615 242 620 230 Z" transform="rotate(25 630 235)" fill="#A5D6A7" />
+  </g>
 
-  <!-- Overlay Badge -->
-  <rect x="30" y="30" width="270" height="50" fill="rgba(255,255,255,0.92)" rx="25" />
-  <text x="50" y="62" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#065f46">NEXT ZERO 智慧永續校園</text>
+  <!-- 10. 藝術英文標語 (Handwritten-style Slogan Badge) -->
+  <g transform="translate(100, 100)" opacity="0.85">
+    <rect x="0" y="0" width="260" height="42" rx="21" fill="#FFFFFF" stroke="#68BC44" stroke-width="2" />
+    <text x="130" y="26" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="700" fill="#2E7D32" text-anchor="middle">
+      🌱 Greener Campus · Better Tomorrow
+    </text>
+  </g>
 </svg>
