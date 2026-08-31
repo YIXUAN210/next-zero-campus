@@ -321,7 +321,7 @@ function setupUploadModal() {
       if (submitText) submitText.innerText = "確認送出";
       if (submitSpinner) submitSpinner.style.display = "none";
       
-      alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 當前狀態：【待審核】\n\n提示：請至管理後台點選「通過」審核，前台即會立即點亮拼圖並累計減碳數據！`);
+      alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 當前狀態：【待審核】\n\n等待審核後就會點亮拼圖！`);
       closeModal();
       loadProgressData();
     });
