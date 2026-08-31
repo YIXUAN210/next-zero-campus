@@ -156,7 +156,7 @@ function doPost(e) {
       });
     }
 
-    // 2. 管理員執行審核狀態更新
+    // 2. 管理員執行單筆審核狀態更新
     if (action === "audit_task") {
       var token = postData.token || "";
       if (token !== ADMIN_SECRET_TOKEN) {
@@ -175,6 +175,31 @@ function doPost(e) {
       } else {
         return jsonResponse({ status: "error", message: "查無此資料列編號" });
       }
+    }
+
+    // 3. 管理員執行一鍵全部統一審核 (Batch Audit)
+    if (action === "batch_audit") {
+      var token = postData.token || "";
+      if (token !== ADMIN_SECRET_TOKEN) {
+        return jsonResponse({ status: "error", message: "管理員安全驗證失敗！" });
+      }
+
+      var targetStatus = String(postData.status || "通過").trim();
+      var lastRow = sheet.getLastRow();
+      var updatedCount = 0;
+
+      for (var r = 2; r <= lastRow; r++) {
+        var cur = String(sheet.getRange(r, 5).getValue() || "").trim();
+        if (cur === "待審核" || cur === "") {
+          sheet.getRange(r, 5).setValue(targetStatus);
+          updatedCount++;
+        }
+      }
+
+      return jsonResponse({
+        status: "success",
+        message: "已成功將 " + updatedCount + " 筆待審核案件統一更新為「" + targetStatus + "」"
+      });
     }
 
     return jsonResponse({ status: "error", message: "未知的 action 操作指令" });

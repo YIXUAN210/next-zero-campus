@@ -236,6 +236,47 @@ function setupToolbar() {
     });
   });
 
+  const btnApproveAll = document.getElementById('btn-approve-all');
+
+  // 一鍵全部通過 (統一審核)
+  if (btnApproveAll) {
+    btnApproveAll.addEventListener('click', async () => {
+      const pendingList = allSubmissions.filter(s => s.status === "待審核" || !s.status);
+      if (pendingList.length === 0) {
+        alert("✨ 目前沒有任何「待審核」的案件需要審核！");
+        return;
+      }
+
+      if (!confirm(`確定要將目前的 ${pendingList.length} 筆待審核案件【一鍵全部通過】審核嗎？`)) return;
+
+      // 1. 本地雙核心儲存庫更新
+      for (const item of pendingList) {
+        await EcoDB.updateStatus(item.rowId, "通過");
+      }
+
+      // 2. 雲端試算表同步
+      const gasUrl = getActiveGasUrl();
+      if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
+        try {
+          await fetch(gasUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              action: "batch_audit",
+              token: currentToken,
+              status: "通過"
+            })
+          });
+        } catch (gasErr) {
+          console.warn("GAS 雲端批次審核同步異常:", gasErr);
+        }
+      }
+
+      await fetchSubmissions();
+      alert(`🎉 統一審核完成！已將 ${pendingList.length} 筆待審核案件全數標記為「通過」。\n前台首頁將即時點亮拼圖並累計全校減碳數據！`);
+    });
+  }
+
   if (btnRefresh) {
     btnRefresh.addEventListener('click', fetchSubmissions);
   }
