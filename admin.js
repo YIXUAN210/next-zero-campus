@@ -1,10 +1,8 @@
 /**
- * NEXT ZERO 管理審核後台 - 真實審核與動態計算邏輯 (v8 旗艦穩定版)
- * 整合 IndexedDB + LocalStorage 雙核心引擎 + 雲端同步管理
- * 零假資料：所有案件均來自真實上傳或管理員手動測試！
+ * NEXT ZERO 管理審核後台 - 真實審核與動態計算邏輯 (v12 終極高相容版)
+ * 整合極速本地儲存 + 雲端同步 + 一鍵全數通過
  */
 
-// 預設 Google Apps Script Web App URL
 const DEFAULT_GAS_API_URL = ""; 
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
@@ -19,59 +17,20 @@ let currentFilter = "all";
  * 取得當前生效的 GAS API URL
  */
 function getActiveGasUrl() {
-  return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+  try {
+    return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+  } catch (e) {
+    return DEFAULT_GAS_API_URL || "";
+  }
 }
 
 /**
  * ==========================================================================
- * EcoDB: 瀏覽器 IndexedDB + LocalStorage 雙層儲存引擎
+ * EcoDB: 極速儲存引擎
  * ==========================================================================
  */
 const EcoDB = {
-  open() {
-    return new Promise((resolve) => {
-      if (!window.indexedDB) {
-        resolve(null);
-        return;
-      }
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "rowId" });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(null);
-    });
-  },
-
-  async getAll() {
-    try {
-      const db = await this.open();
-      if (db) {
-        return new Promise((resolve) => {
-          const tx = db.transaction(STORE_NAME, "readonly");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.getAll();
-          req.onsuccess = () => {
-            const list = req.result || [];
-            if (list.length > 0) {
-              resolve(list.sort((a, b) => b.rowId - a.rowId));
-              return;
-            }
-            resolve(this.getFromLocalStorage());
-          };
-          req.onerror = () => resolve(this.getFromLocalStorage());
-        });
-      }
-    } catch (e) {
-      console.warn("IndexedDB 讀取異常:", e);
-    }
-    return this.getFromLocalStorage();
-  },
-
-  getFromLocalStorage() {
+  getAll() {
     try {
       const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
       return raw ? JSON.parse(raw) : [];
@@ -80,32 +39,8 @@ const EcoDB = {
     }
   },
 
-  async updateStatus(rowId, status) {
-    // 更新 IndexedDB
-    try {
-      const db = await this.open();
-      if (db) {
-        await new Promise((resolve) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.get(rowId);
-          req.onsuccess = () => {
-            const item = req.result;
-            if (item) {
-              item.status = status;
-              store.put(item);
-            }
-            resolve();
-          };
-          req.onerror = () => resolve();
-        });
-      }
-    } catch (e) {
-      console.warn("IndexedDB 更新異常:", e);
-    }
-
-    // 更新 LocalStorage
-    const list = this.getFromLocalStorage();
+  updateStatus(rowId, status) {
+    const list = this.getAll();
     const target = list.find(s => s.rowId === rowId);
     if (target) {
       target.status = status;
@@ -113,39 +48,29 @@ const EcoDB = {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
       } catch (e) {}
     }
-
-    // 觸發自訂事件廣播
-    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    try {
+      window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    } catch (e) {}
   },
 
-  async clearAll() {
+  clearAll() {
     try {
-      const db = await this.open();
-      if (db) {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        tx.objectStore(STORE_NAME).clear();
-      }
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch (e) {}
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    try {
+      window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    } catch (e) {}
   },
 
-  async add(item) {
-    try {
-      const db = await this.open();
-      if (db) {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        tx.objectStore(STORE_NAME).put(item);
-      }
-    } catch (e) {}
-
-    let list = this.getFromLocalStorage();
+  add(item) {
+    let list = this.getAll();
     list.unshift(item);
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
     } catch (e) {}
-
-    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    try {
+      window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    } catch (e) {}
   }
 };
 
@@ -156,16 +81,15 @@ document.addEventListener('DOMContentLoaded', () => {
   setupAuth();
   setupToolbar();
   setupPhotoModal();
-  setupCloudSettingsModal();
 
-  // 若 sessionStorage 存有 Token，自動嘗試登入
+  // 若 sessionStorage 存有 Token，自動登入
   const savedToken = sessionStorage.getItem("NEXT_ZERO_ADMIN_TOKEN");
   if (savedToken) {
     currentToken = savedToken;
     loginSuccess();
   }
 
-  // 跨分頁與同分頁實時監聽
+  // 實時監聽
   window.addEventListener('storage', (e) => {
     if (e.key === LOCAL_STORAGE_KEY && currentToken) {
       fetchSubmissions();
@@ -226,6 +150,7 @@ function setupToolbar() {
   const btnTestSample = document.getElementById('btn-test-sample');
   const btnClearAll = document.getElementById('btn-clear-all');
   const btnConfigGas = document.getElementById('btn-config-gas');
+  const btnApproveAll = document.getElementById('btn-approve-all');
 
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -235,8 +160,6 @@ function setupToolbar() {
       renderSubmissions();
     });
   });
-
-  const btnApproveAll = document.getElementById('btn-approve-all');
 
   // 一鍵全部通過 (統一審核)
   if (btnApproveAll) {
@@ -249,16 +172,16 @@ function setupToolbar() {
 
       if (!confirm(`確定要將目前的 ${pendingList.length} 筆待審核案件【一鍵全部通過】審核嗎？`)) return;
 
-      // 1. 本地雙核心儲存庫更新
+      // 1. 本地儲存庫全數更新為通過
       for (const item of pendingList) {
-        await EcoDB.updateStatus(item.rowId, "通過");
+        EcoDB.updateStatus(item.rowId, "通過");
       }
 
-      // 2. 雲端試算表同步
+      // 2. 雲端同步
       const gasUrl = getActiveGasUrl();
       if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
         try {
-          await fetch(gasUrl, {
+          fetch(gasUrl, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({
@@ -267,9 +190,7 @@ function setupToolbar() {
               status: "通過"
             })
           });
-        } catch (gasErr) {
-          console.warn("GAS 雲端批次審核同步異常:", gasErr);
-        }
+        } catch (gasErr) {}
       }
 
       await fetchSubmissions();
@@ -281,7 +202,7 @@ function setupToolbar() {
     btnRefresh.addEventListener('click', fetchSubmissions);
   }
 
-  // 快速建立一筆真實測試案件 (方便使用者一鍵驗證審核流程)
+  // 快速建立一筆真實測試案件
   if (btnTestSample) {
     btnTestSample.addEventListener('click', async () => {
       const now = new Date();
@@ -297,7 +218,7 @@ function setupToolbar() {
         status: "待審核"
       };
 
-      await EcoDB.add(sampleItem);
+      EcoDB.add(sampleItem);
       await fetchSubmissions();
       alert("✨ 已成功建立 1 筆測試待審核案件！您可以點選「✅ 通過審核」進行即時驗證。");
     });
@@ -307,7 +228,7 @@ function setupToolbar() {
   if (btnClearAll) {
     btnClearAll.addEventListener('click', async () => {
       if (!confirm("⚠️ 確定要清空所有上傳與審核案件紀錄嗎？\n（此操作將重設所有拼圖與減碳統計數據）")) return;
-      await EcoDB.clearAll();
+      EcoDB.clearAll();
       await fetchSubmissions();
       alert("🗑️ 所有案件已清空，數據已重設為 0！");
     });
@@ -328,7 +249,7 @@ function setupToolbar() {
 }
 
 /**
- * 載入所有真實任務上傳案件（完全排除假資料）
+ * 載入所有真實任務上傳案件
  */
 async function fetchSubmissions() {
   const grid = document.getElementById('submissions-grid');
@@ -336,12 +257,14 @@ async function fetchSubmissions() {
 
   const gasUrl = getActiveGasUrl();
 
-  // 情況 1：若有設定 GAS 雲端 API，向 Google 試算表拉取資料
+  // 情況 1：若有設定 GAS 雲端 API，向 Google 試算表拉取資料 (3 秒超時保護)
   if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
     try {
-      grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #537562; padding: 40px; font-weight: 600;">🔄 正在從雲端 Google 試算表載入審核名單中...</p>';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       const url = `${gasUrl}?action=get_admin_list&token=${encodeURIComponent(currentToken)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await res.json();
 
       if (data.status === "success") {
@@ -351,12 +274,12 @@ async function fetchSubmissions() {
         return;
       }
     } catch (err) {
-      console.warn("GAS 雲端拉取失敗，自動由本地雙核心儲存庫讀取:", err);
+      console.warn("GAS 雲端拉取超時或離線，自動由本地儲存庫讀取:", err);
     }
   }
 
-  // 情況 2：從 EcoDB (IndexedDB + LocalStorage) 讀取真實上傳案件
-  allSubmissions = await EcoDB.getAll();
+  // 情況 2：從 EcoDB 讀取真實上傳案件
+  allSubmissions = EcoDB.getAll();
   updateCounts();
   renderSubmissions();
 }
@@ -365,7 +288,7 @@ async function fetchSubmissions() {
  * 更新統計數字看板
  */
 function updateCounts() {
-  const pending = allSubmissions.filter(s => s.status === "待審核").length;
+  const pending = allSubmissions.filter(s => s.status === "待審核" || !s.status).length;
   const approved = allSubmissions.filter(s => s.status === "通過").length;
   const rejected = allSubmissions.filter(s => s.status === "退回").length;
 
@@ -403,7 +326,7 @@ function getMediaEmbedUrl(url) {
 }
 
 /**
- * 渲染卡片清單（真實上傳紀錄）
+ * 渲染卡片清單
  */
 function renderSubmissions() {
   const grid = document.getElementById('submissions-grid');
@@ -445,7 +368,7 @@ function renderSubmissions() {
     card.innerHTML = `
       <div class="sub-img-box" onclick="showPhoto('${embedImgUrl}', '${item.photoUrl}')">
         <img src="${embedImgUrl}" alt="佐證照片" loading="lazy" onerror="this.onerror=null; this.src='puzzle.svg';">
-        <span class="sub-badge badge-${item.status}">${item.status}</span>
+        <span class="sub-badge badge-${item.status || '待審核'}">${item.status || '待審核'}</span>
         <div class="img-hint-overlay">🔍 點擊檢視佐證大圖</div>
       </div>
       <div class="sub-body">
@@ -468,19 +391,19 @@ function renderSubmissions() {
 }
 
 /**
- * 執行審核動作 (通過 / 退回) - 實時連動更新
+ * 執行審核動作 (通過 / 退回)
  */
 async function auditTask(rowId, status) {
   if (!confirm(`確定要將此筆任務設定為「${status}」嗎？`)) return;
 
-  // 1. 本地雙核心儲存庫更新
-  await EcoDB.updateStatus(rowId, status);
+  // 1. 本地更新
+  EcoDB.updateStatus(rowId, status);
 
-  // 2. 若有設定 GAS 雲端 API，同步更新雲端試算表
+  // 2. 雲端同步
   const gasUrl = getActiveGasUrl();
   if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
     try {
-      await fetch(gasUrl, {
+      fetch(gasUrl, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
@@ -490,9 +413,7 @@ async function auditTask(rowId, status) {
           status: status
         })
       });
-    } catch (err) {
-      console.warn("GAS 雲端審核同步異常:", err);
-    }
+    } catch (err) {}
   }
 
   await fetchSubmissions();
@@ -527,10 +448,6 @@ function showPhoto(embedUrl, originalUrl) {
     }
     modal.classList.add('active');
   }
-}
-
-function setupCloudSettingsModal() {
-  // Reserved for additional modal setup if needed
 }
 
 function escapeHtml(str) {

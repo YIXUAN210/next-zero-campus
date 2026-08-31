@@ -1,9 +1,8 @@
 /**
- * NEXT ZERO 校園永續拼圖 - 前端互動與直傳核心邏輯 (v8 旗艦穩定版)
- * 整合 IndexedDB + LocalStorage 雙核心持久化引擎 + Google Apps Script 雲端雙向同步
+ * NEXT ZERO 校園永續拼圖 - 前端互動與直傳核心邏輯 (v12 終極高相容版)
+ * 支援：同步輕量持久化 + 非阻塞非同步 IndexedDB + 雲端同步 + 零卡頓保護
  */
 
-// 預設 Google Apps Script Web App URL（亦可由後台介面動態設定）
 const DEFAULT_GAS_API_URL = ""; 
 const TOTAL_TILES = 9; // 3x3 網格共 9 塊
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
@@ -18,118 +17,88 @@ let currentImageName = "";
  * 取得當前生效的 GAS API URL
  */
 function getActiveGasUrl() {
-  return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+  try {
+    return localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_API_URL || "";
+  } catch (e) {
+    return DEFAULT_GAS_API_URL || "";
+  }
 }
 
 /**
  * ==========================================================================
- * EcoDB: 瀏覽器 IndexedDB + LocalStorage 雙層無上限儲存引擎
+ * EcoDB: 極速同步 LocalStorage + 背景 IndexedDB 永不卡頓儲存庫
  * ==========================================================================
  */
 const EcoDB = {
-  // 開啟 IndexedDB
-  open() {
-    return new Promise((resolve, reject) => {
-      if (!window.indexedDB) {
-        resolve(null);
-        return;
-      }
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "rowId" });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(null);
-    });
-  },
-
-  // 取得所有案件
-  async getAll() {
-    // 優先讀取 IndexedDB
-    try {
-      const db = await this.open();
-      if (db) {
-        return new Promise((resolve) => {
-          const tx = db.transaction(STORE_NAME, "readonly");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.getAll();
-          req.onsuccess = () => {
-            const list = req.result || [];
-            // 若 IndexedDB 有資料，同步至 LocalStorage
-            if (list.length > 0) {
-              this.syncToLocalStorage(list);
-              resolve(list.sort((a, b) => b.rowId - a.rowId));
-              return;
-            }
-            // 若 IndexedDB 為空，回退讀取 LocalStorage
-            resolve(this.getFromLocalStorage());
-          };
-          req.onerror = () => resolve(this.getFromLocalStorage());
-        });
-      }
-    } catch (e) {
-      console.warn("IndexedDB 讀取異常，回退至 LocalStorage:", e);
-    }
-    return this.getFromLocalStorage();
-  },
-
-  // 從 LocalStorage 讀取
-  getFromLocalStorage() {
+  // 從 LocalStorage 獲取案件清單 (極速同步，相容所有手機與無痕模式)
+  getAll() {
     try {
       const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
       return raw ? JSON.parse(raw) : [];
     } catch (e) {
+      console.warn("LocalStorage 讀取警告:", e);
       return [];
     }
   },
 
-  // 同步輕量摘要至 LocalStorage (供即時跨分頁事件監聽)
-  syncToLocalStorage(list) {
-    try {
-      // 為避免 LocalStorage 5MB 限制，照片超過 100KB 時以縮圖字串快取
-      const lightList = list.map(item => ({
-        rowId: item.rowId,
-        timestamp: item.timestamp,
-        nickname: item.nickname,
-        taskType: item.taskType,
-        status: item.status,
-        photoUrl: item.photoUrl && item.photoUrl.length > 200000 ? "puzzle.svg" : item.photoUrl,
-        imageName: item.imageName
-      }));
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lightList));
-    } catch (e) {
-      console.warn("LocalStorage 同步快取警示:", e);
-    }
-  },
-
-  // 新增案件
+  // 新增案件 (立即寫入 LocalStorage，並在背景寫入 IndexedDB)
   async add(item) {
-    // 寫入 IndexedDB
+    // 1. 同步寫入 LocalStorage (確保 0 毫秒立即完成，絕不卡死)
     try {
-      const db = await this.open();
-      if (db) {
-        await new Promise((resolve) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          store.put(item);
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => resolve();
-        });
-      }
-    } catch (e) {
-      console.warn("IndexedDB 寫入異常:", e);
+      let list = this.getAll();
+      list.unshift(item);
+      // 若超過 50 筆，保留最新 50 筆確保效能
+      if (list.length > 50) list = list.slice(0, 50);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+    } catch (storageErr) {
+      console.warn("LocalStorage 儲存警示 (縮小快取):", storageErr);
+      try {
+        // 若空間不足，縮小照片只保留縮圖
+        let list = this.getAll();
+        const compactItem = Object.assign({}, item, { photoUrl: "puzzle.svg" });
+        list.unshift(compactItem);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list.slice(0, 20)));
+      } catch (e) {}
     }
 
-    // 寫入 LocalStorage
-    let localList = this.getFromLocalStorage();
-    localList.unshift(item);
-    this.syncToLocalStorage(localList);
+    // 2. 背景非阻塞寫入 IndexedDB (帶超時保護，避免手機無痕模式掛起)
+    try {
+      if (window.indexedDB) {
+        const idbPromise = new Promise((resolve) => {
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME, { keyPath: "rowId" });
+            }
+          };
+          req.onsuccess = (e) => {
+            try {
+              const db = e.target.result;
+              const tx = db.transaction(STORE_NAME, "readwrite");
+              tx.objectStore(STORE_NAME).put(item);
+              resolve();
+            } catch (err) {
+              resolve();
+            }
+          };
+          req.onerror = () => resolve();
+        });
+        
+        // 最多等待 500ms，超時直接跳過，絕不阻塞使用者
+        await Promise.race([
+          idbPromise,
+          new Promise(r => setTimeout(r, 500))
+        ]);
+      }
+    } catch (idbErr) {
+      console.warn("IndexedDB 背景儲存略過:", idbErr);
+    }
 
-    // 發送廣播事件
-    window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    // 觸發自訂廣播事件
+    try {
+      window.dispatchEvent(new CustomEvent("eco-data-changed"));
+    } catch (e) {}
   }
 };
 
@@ -170,9 +139,9 @@ function initGrid() {
 }
 
 /**
- * 智慧相片壓縮函數（將高畫質大圖自動壓縮至 800px 輕量化 JPEG）
+ * 智慧相片壓縮函數（快速將相片壓縮至 600px 輕量化 JPEG，大小僅約 30KB～50KB）
  */
-function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.75) {
+function compressImage(file, maxWidth = 600, maxHeight = 600, quality = 0.7) {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -199,13 +168,14 @@ function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.75) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedBase64);
+        try {
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        } catch (canvasErr) {
+          resolve(e.target.result);
+        }
       };
-      img.onerror = () => {
-        // 若圖片無法被 canvas 解碼 (如特殊格式)，直接回傳原始 Base64
-        resolve(e.target.result);
-      };
+      img.onerror = () => resolve(e.target.result);
       img.src = e.target.result;
     };
     reader.onerror = () => resolve("puzzle.svg");
@@ -241,13 +211,13 @@ function setupUploadModal() {
   if (btnClose) btnClose.addEventListener('click', closeModal);
   if (btnCancel) btnCancel.addEventListener('click', closeModal);
 
-  // 監聽相片選擇與自動壓縮處理
+  // 監聽相片選擇
   if (fileInput) {
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      currentImageName = file.name;
+      currentImageName = file.name || "photo.jpg";
       try {
         currentBase64Image = await compressImage(file);
         if (previewImg && previewContainer) {
@@ -255,75 +225,89 @@ function setupUploadModal() {
           previewContainer.style.display = 'block';
         }
       } catch (err) {
-        console.error("相片讀取失敗:", err);
+        console.error("相片處理異常:", err);
       }
     });
   }
 
-  // 表單送出處理
+  // 表單送出處理 (含完整的超時與按鈕狀態還原保護)
   if (uploadForm) {
     uploadForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nickname = document.getElementById('input-nickname').value.trim();
-      const taskType = document.getElementById('select-task').value;
+      const nicknameInput = document.getElementById('input-nickname');
+      const taskSelect = document.getElementById('select-task');
       const btnSubmit = document.getElementById('btn-submit');
       const submitText = document.getElementById('submit-text');
       const submitSpinner = document.getElementById('submit-spinner');
+
+      const nickname = nicknameInput ? nicknameInput.value.trim() : "同學";
+      const taskType = taskSelect ? taskSelect.value : "節能任務";
 
       if (!currentBase64Image) {
         alert("📸 請選取或拍攝佐證照片！");
         return;
       }
 
-      // 進入上傳中狀態
+      // 進入處理中狀態
       if (btnSubmit) btnSubmit.disabled = true;
       if (submitText) submitText.innerText = "正在儲存案件...";
       if (submitSpinner) submitSpinner.style.display = "inline-block";
 
-      const now = new Date();
-      const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-      
-      const newSubmission = {
-        rowId: Date.now(),
-        timestamp: timeStr,
-        nickname: nickname || "熱心同學",
-        taskType: taskType,
-        photoUrl: currentBase64Image,
-        imageName: currentImageName || "photo.jpg",
-        status: "待審核"
-      };
+      try {
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        
+        const newSubmission = {
+          rowId: Date.now(),
+          timestamp: timeStr,
+          nickname: nickname || "熱心同學",
+          taskType: taskType,
+          photoUrl: currentBase64Image,
+          imageName: currentImageName || "photo.jpg",
+          status: "待審核"
+        };
 
-      // 1. 寫入本地雙核心儲存庫 (IndexedDB + LocalStorage)
-      await EcoDB.add(newSubmission);
+        // 1. 本地立即儲存 (0 毫秒極速寫入)
+        await EcoDB.add(newSubmission);
 
-      // 2. 若有設定 Google Apps Script API，同步寫入雲端
-      const gasUrl = getActiveGasUrl();
-      if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
-        try {
-          await fetch(gasUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({
-              action: "submit_task",
-              nickname: nickname,
-              taskType: taskType,
-              imageName: currentImageName,
-              imageBase64: currentBase64Image
-            })
-          });
-        } catch (gasErr) {
-          console.warn("GAS 雲端同步異常，已先保存在本地引擎:", gasErr);
+        // 2. 若有設定 Google Apps Script API，背景同步雲端 (設定 3.5 秒超時，絕不卡住網頁)
+        const gasUrl = getActiveGasUrl();
+        if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            await fetch(gasUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                action: "submit_task",
+                nickname: nickname,
+                taskType: taskType,
+                imageName: currentImageName,
+                imageBase64: currentBase64Image
+              }),
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+          } catch (gasErr) {
+            console.warn("GAS 雲端同步背景處理中或超時:", gasErr);
+          }
         }
-      }
 
-      // 重設按鈕狀態並反饋使用者
-      if (btnSubmit) btnSubmit.disabled = false;
-      if (submitText) submitText.innerText = "確認送出";
-      if (submitSpinner) submitSpinner.style.display = "none";
-      
-      alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 當前狀態：【待審核】\n\n等待審核後就會點亮拼圖！`);
-      closeModal();
-      loadProgressData();
+        // 3. 成功提示與關閉彈窗
+        alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 當前狀態：【待審核】\n\n等待審核後就會點亮拼圖！`);
+        closeModal();
+        loadProgressData();
+
+      } catch (err) {
+        console.error("送出過程中發生錯誤:", err);
+        alert("⚠️ 儲存時發生異常，請重試！");
+      } finally {
+        // 無論成功或失敗，必定還原按鈕狀態！
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (submitText) submitText.innerText = "確認送出";
+        if (submitSpinner) submitSpinner.style.display = "none";
+      }
     });
   }
 }
@@ -334,10 +318,13 @@ function setupUploadModal() {
 async function loadProgressData() {
   const gasUrl = getActiveGasUrl();
 
-  // 情況 1：若有部署 GAS 雲端 API，優先向雲端拉取
+  // 情況 1：若有部署 GAS 雲端 API，向雲端拉取
   if (gasUrl && gasUrl !== "YOUR_GAS_WEB_APP_URL") {
     try {
-      const response = await fetch(gasUrl);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(gasUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (response.ok) {
         const data = await response.json();
         if (data.status === "success") {
@@ -346,12 +333,12 @@ async function loadProgressData() {
         }
       }
     } catch (err) {
-      console.warn("GAS 雲端暫時離線，自動由本地雙核心引擎計算:", err);
+      console.warn("GAS 雲端連線略過，自動使用本地計算引擎:", err);
     }
   }
 
   // 情況 2：從 EcoDB 讀取真實通過之案件
-  const storedList = await EcoDB.getAll();
+  const storedList = EcoDB.getAll();
   const approvedList = storedList.filter(item => item.status === "通過");
   
   let task1 = 0, task2 = 0, task3 = 0, task4 = 0, task5 = 0;
@@ -412,7 +399,7 @@ function renderData(data) {
     progressBar.style.width = `${percentage}%`;
   }
 
-  // 先清空所有已解鎖狀態（確保未審核通過前保持遮罩覆蓋）
+  // 先清空所有已解鎖狀態
   for (let i = 0; i < TOTAL_TILES; i++) {
     const tile = document.getElementById(`tile-${i}`);
     if (tile) {
