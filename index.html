@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXT ZERO 校園永續拼圖 ｜ 綠色校園·永續未來</title>
-  <link rel="stylesheet" href="style.css?v=20260901v16">
+  <link rel="stylesheet" href="style.css?v=20260901v17">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -236,6 +236,50 @@
     </div>
   </div>
 
+  <!-- 送出成功成就慶祝彈窗 (Success Celebration Modal) -->
+  <div class="modal-overlay" id="success-modal">
+    <div class="modal-card success-card">
+      <div class="confetti-particles">
+        <span class="particle p1">🌱</span>
+        <span class="particle p2">✨</span>
+        <span class="particle p3">🌟</span>
+        <span class="particle p4">🍃</span>
+        <span class="particle p5">⭐</span>
+        <span class="particle p6">🌱</span>
+      </div>
+
+      <div class="success-icon-wrap">
+        <div class="success-pulse-circle"></div>
+        <div class="success-badge-icon">🌿</div>
+        <div class="success-check-badge">✓</div>
+      </div>
+
+      <h3 class="success-title">任務佐證已成功送出！</h3>
+      <p class="success-desc">感謝你為校園永續與地球減碳跨出重要的一步 ✨</p>
+
+      <div class="success-details-box">
+        <div class="detail-row">
+          <span class="detail-label">👤 提交者</span>
+          <span class="detail-val" id="success-nickname">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">📋 行動項目</span>
+          <span class="detail-val" id="success-task">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">🕒 當前狀態</span>
+          <span class="detail-val badge-pending-tag">🟡 等待管理員審核</span>
+        </div>
+      </div>
+
+      <p class="success-hint">⏳ 等待審核通過後，首頁拼圖將即時點亮並累計減碳數據！</p>
+
+      <button type="button" class="btn-success-close" id="btn-close-success">
+        🌟 繼續瀏覽校園拼圖
+      </button>
+    </div>
+  </div>
+
   <footer class="footer">
     <div class="footer-content">
       <p class="footer-title">🌱 NEXT ZERO Campus Sustainability Initiative © 2026</p>
@@ -246,6 +290,6 @@
     </div>
   </footer>
 
-  <script src="app.js?v=20260901v16"></script>
+  <script src="app.js?v=20260901v17"></script>
 </body>
 </html>

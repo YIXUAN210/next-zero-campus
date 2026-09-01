@@ -230,6 +230,15 @@ function setupUploadModal() {
     });
   }
 
+  // 送出成功慶祝彈窗事件
+  const successModal = document.getElementById('success-modal');
+  const btnCloseSuccess = document.getElementById('btn-close-success');
+  if (btnCloseSuccess && successModal) {
+    btnCloseSuccess.addEventListener('click', () => {
+      successModal.classList.remove('active');
+    });
+  }
+
   // 表單送出處理 (含完整的超時與按鈕狀態還原保護)
   if (uploadForm) {
     uploadForm.addEventListener('submit', async (e) => {
@@ -240,7 +249,7 @@ function setupUploadModal() {
       const submitText = document.getElementById('submit-text');
       const submitSpinner = document.getElementById('submit-spinner');
 
-      const nickname = nicknameInput ? nicknameInput.value.trim() : "同學";
+      const nickname = nicknameInput ? nicknameInput.value.trim() : "熱心同學";
       const taskType = taskSelect ? taskSelect.value : "節能任務";
 
       if (!currentBase64Image) {
@@ -294,9 +303,15 @@ function setupUploadModal() {
           }
         }
 
-        // 3. 成功提示與關閉彈窗
-        alert(`🎉 任務佐證已成功送出！\n\n- 提交人：${nickname}\n- 任務項目：${taskType}\n- 當前狀態：【待審核】\n\n等待審核後就會點亮拼圖！`);
+        // 3. 關閉輸入彈窗，開啟成就慶祝動畫彈窗！
         closeModal();
+        
+        const succNick = document.getElementById('success-nickname');
+        const succTask = document.getElementById('success-task');
+        if (succNick) succNick.innerText = nickname;
+        if (succTask) succTask.innerText = taskType;
+        if (successModal) successModal.classList.add('active');
+
         loadProgressData();
 
       } catch (err) {
