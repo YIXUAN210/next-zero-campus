@@ -399,6 +399,15 @@ function renderData(data) {
     progressBar.style.width = `${percentage}%`;
   }
 
+  const puzzleContainer = document.getElementById('puzzle-container');
+  if (puzzleContainer) {
+    if (unlockCount >= TOTAL_TILES && TOTAL_TILES > 0) {
+      puzzleContainer.classList.add('celebrating');
+    } else {
+      puzzleContainer.classList.remove('celebrating');
+    }
+  }
+
   // 先清空所有已解鎖狀態
   for (let i = 0; i < TOTAL_TILES; i++) {
     const tile = document.getElementById(`tile-${i}`);
@@ -407,13 +416,13 @@ function renderData(data) {
     }
   }
 
-  // 僅針對真實審核通過之數量逐塊點亮
+  // 僅針對真實審核通過之數量逐塊以 3D 翻轉與能量光暈點亮
   for (let i = 0; i < unlockCount; i++) {
     const tile = document.getElementById(`tile-${i}`);
     if (tile) {
       setTimeout(() => {
         tile.classList.add('unlocked');
-      }, i * 60);
+      }, 100 + i * 110);
     }
   }
 }
