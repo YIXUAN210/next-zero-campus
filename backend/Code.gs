@@ -34,13 +34,14 @@ function doGet(e) {
       var submissions = [];
       for (var i = 1; i < data.length; i++) {
         var row = data[i];
+        if (!row || (!row[0] && !row[1] && !row[2])) continue;
         submissions.push({
           rowId: i + 1, // 試算表實際列號 (1-indexed)
           timestamp: row[0],
-          nickname: row[1],
-          taskType: row[2],
-          photoUrl: row[3],
-          status: row[4] || "待審核"
+          nickname: String(row[1] || "熱心同學"),
+          taskType: String(row[2] || ""),
+          photoUrl: String(row[3] || ""),
+          status: String(row[4] || "待審核").trim() || "待審核"
         });
       }
 

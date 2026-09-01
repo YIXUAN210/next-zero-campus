@@ -444,7 +444,8 @@ function showPhoto(embedUrl, originalUrl) {
 }
 
 function escapeHtml(str) {
-  return str.replace(/[&<>'"]/g, 
+  if (str === null || str === undefined) return "";
+  return String(str).replace(/[&<>'"]/g, 
     tag => ({
       '&': '&amp;',
       '<': '&lt;',
