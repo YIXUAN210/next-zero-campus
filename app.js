@@ -4,7 +4,7 @@
  */
 
 const DEFAULT_GAS_API_URL = "https://script.google.com/macros/s/AKfycbxyCYnR-geEtHPLadoAgXqGZB_H66MVsEr8PojrriLkQmOjSPtYyxR9Cm-dMe2o3pkO/exec"; 
-const TOTAL_TILES = 9; // 3x3 網格共 9 塊
+const TOTAL_TILES = 60; // 10x6 網格共 60 塊
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
 const DB_NAME = "NextZeroCampusDB";
@@ -431,13 +431,14 @@ function renderData(data) {
     }
   }
 
-  // 僅針對真實審核通過之數量逐塊以 3D 翻轉與能量光暈點亮
+  // 僅針對真實審核通過之數量逐塊以 3D 翻轉與能量光暈點亮 (動態自適應延遲，60 塊解鎖體驗流暢)
+  const delayStep = Math.max(15, Math.min(50, 1000 / Math.max(unlockCount, 1)));
   for (let i = 0; i < unlockCount; i++) {
     const tile = document.getElementById(`tile-${i}`);
     if (tile) {
       setTimeout(() => {
         tile.classList.add('unlocked');
-      }, 100 + i * 110);
+      }, 50 + i * delayStep);
     }
   }
 }
