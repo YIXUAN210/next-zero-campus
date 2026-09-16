@@ -190,8 +190,47 @@ function setupToolbar() {
 
   // 清空所有案件
   if (btnClearAll) {
-    btnClearAll.addEventListener('click', () => {
-      alert("💡 提示：所有真實上傳紀錄已安全儲存於您的 Google 雲端試算表中。\n如需刪除歷史資料，請直接開啟 Google 試算表刪除資料列即可！");
+    btnClearAll.addEventListener('click', async () => {
+      const confirmDelete = confirm("⚠️ 確定要清空所有上傳紀錄嗎？\n\n此動作將會清除 Google 試算表與本機中的所有案件紀錄，並重置拼圖與減碳進度！");
+      if (!confirmDelete) return;
+
+      btnClearAll.disabled = true;
+      btnClearAll.innerText = "⏳ 正在清空紀錄...";
+
+      try {
+        const gasUrl = getActiveGasUrl();
+        const token = currentToken || DEFAULT_TOKEN;
+
+        // 1. 同步請求 Google Apps Script 清空試算表
+        if (gasUrl) {
+          try {
+            await fetch(gasUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                action: "clear_all_records",
+                token: token
+              })
+            });
+          } catch (e) {
+            console.warn("GAS 清空請求通訊:", e);
+          }
+        }
+
+        // 2. 清空本地快取
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        allSubmissions = [];
+        updateCounts();
+        renderSubmissions();
+
+        alert("✅ 清空指令已送出！\n\n💡 提示：若您的 Google 試算表是較早部署的 Apps Script，您也可以直接在 Google 試算表中選取第 2 列以後的所有資料並右鍵「刪除列」，即可瞬間徹底清空！");
+        await fetchSubmissions();
+      } catch (err) {
+        alert("⚠️ 清空操作異常：" + err);
+      } finally {
+        btnClearAll.disabled = false;
+        btnClearAll.innerText = "🗑️ 清空所有案件";
+      }
     });
   }
 

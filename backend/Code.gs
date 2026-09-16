@@ -203,6 +203,24 @@ function doPost(e) {
       });
     }
 
+    // 4. 管理員執行一鍵清空所有紀錄 (Clear All Records)
+    if (action === "clear_all_records" || action === "delete_all_records") {
+      var token = postData.token || "";
+      if (token !== ADMIN_SECRET_TOKEN) {
+        return jsonResponse({ status: "error", message: "管理員安全驗證失敗！" });
+      }
+
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+
+      return jsonResponse({
+        status: "success",
+        message: "已成功清空 Google 試算表中的所有上傳紀錄！"
+      });
+    }
+
     return jsonResponse({ status: "error", message: "未知的 action 操作指令" });
 
   } catch (err) {
