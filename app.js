@@ -4,7 +4,7 @@
  */
 
 const DEFAULT_GAS_API_URL = "https://script.google.com/macros/s/AKfycbxyCYnR-geEtHPLadoAgXqGZB_H66MVsEr8PojrriLkQmOjSPtYyxR9Cm-dMe2o3pkO/exec"; 
-const TOTAL_TILES = 36; // 6x6 網格共 36 塊
+const TOTAL_TILES = 16; // 4x4 網格共 16 塊
 const LOCAL_STORAGE_KEY = "NEXT_ZERO_SUBMISSIONS_STORAGE";
 const GAS_URL_KEY = "NEXT_ZERO_GAS_URL";
 const DB_NAME = "NextZeroCampusDB";
